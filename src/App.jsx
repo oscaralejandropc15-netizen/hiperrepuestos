@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
 import { supabase } from './lib/supabaseClient';
-import { calculateTotals } from './lib/formatters';
+import { calculateTotals, parseVenezuelanNumber } from './lib/formatters';
 import { fetchTasaBCV } from './lib/bcvService';
 import FacturadorForm from './components/FacturadorForm';
 import GuiaImprimible from './components/GuiaImprimible';
@@ -124,13 +124,16 @@ export default function App() {
       return null;
     }
 
-    const rate = parseFloat(tasaBCV) || 1;
+    const rateClean = parseVenezuelanNumber(tasaBCV);
+    const rate = rateClean > 0 ? rateClean : 1;
+
     const itemsValidos = items.filter((it) => {
       const hasDesc = it.descripcion && it.descripcion.trim().length > 0;
       const hasQty = parseFloat(it.cantidad) > 0;
-      const hasPrice = (monedaIngreso === 'VES' 
-        ? (parseFloat(it.precio_bs) >= 0 || parseFloat(it.precio) >= 0)
-        : (parseFloat(it.precio) >= 0 || parseFloat(it.precio_bs) >= 0));
+      const cleanPrice = monedaIngreso === 'VES' 
+        ? parseVenezuelanNumber(it.precio_bs ?? it.precio)
+        : parseVenezuelanNumber(it.precio ?? it.precio_bs);
+      const hasPrice = cleanPrice >= 0;
       return hasDesc && hasQty && hasPrice;
     });
 
@@ -149,7 +152,7 @@ export default function App() {
         cliente_documento: cliente.documento.trim(),
         cliente_telefono: cliente.telefono.trim() || null,
         cliente_direccion: cliente.direccion.trim() || null,
-        tasa_bcv: parseFloat(tasaBCV) || 0,
+        tasa_bcv: rateClean,
         subtotal_usd: totals.baseImponible,
         iva_usd: totals.iva,
         total_usd: totals.totalUSD,
@@ -184,10 +187,10 @@ export default function App() {
       const renglones = itemsValidos.map((it) => {
         let priceUSD = 0;
         if (monedaIngreso === 'VES') {
-          const bs = parseFloat(it.precio_bs) || 0;
+          const bs = parseVenezuelanNumber(it.precio_bs);
           priceUSD = rate > 0 ? bs / rate : 0;
         } else {
-          priceUSD = parseFloat(it.precio) || 0;
+          priceUSD = parseVenezuelanNumber(it.precio);
         }
 
         return {

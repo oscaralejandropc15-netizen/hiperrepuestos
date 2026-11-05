@@ -23,7 +23,7 @@ import {
   Hash,
   Layers
 } from 'lucide-react';
-import { formatUSD, formatVES, formatNumber } from '../lib/formatters';
+import { formatUSD, formatVES, formatNumber, formatMilesVES, parseVenezuelanNumber } from '../lib/formatters';
 
 export default function FacturadorForm({
   cliente,
@@ -94,6 +94,24 @@ export default function FacturadorForm({
     handleClienteChange('documento', `${prefijo}-${numPart}`);
   };
 
+  // Manejador estricto para Teléfono: solo números y autoformato (ej: 0414-1234567)
+  const handleTelefonoChange = (raw) => {
+    let digits = raw.replace(/\D/g, '');
+    
+    // Si pegan formato internacional venezolano +58414... convertir a 0414...
+    if (digits.startsWith('58') && digits.length >= 12) {
+      digits = '0' + digits.slice(2);
+    }
+    
+    digits = digits.slice(0, 11);
+    
+    let formatted = digits;
+    if (digits.length > 4) {
+      formatted = `${digits.slice(0, 4)}-${digits.slice(4)}`;
+    }
+    handleClienteChange('telefono', formatted);
+  };
+
   const handleItemChange = (index, field, value) => {
     setItems(prev => {
       const next = [...prev];
@@ -103,20 +121,65 @@ export default function FacturadorForm({
   };
 
   // Manejador de precios reactivo según la moneda activa (Bs. o $)
-  const handlePrecioChange = (index, value) => {
-    const rate = parseFloat(tasaBCV) || 1;
+  // Formatea automáticamente con puntos de miles y coma decimal estándar venezolano
+  const handlePrecioChange = (index, rawValue) => {
+    let input = rawValue;
+    // Si el usuario presiona el punto en el teclado numérico, interpretarlo como coma decimal si no hay coma aún
+    if (input.endsWith('.') && !input.slice(0, -1).includes(',')) {
+      input = input.slice(0, -1) + ',';
+    }
+
+    // Permitir solo números, coma y punto
+    input = input.replace(/[^0-9.,]/g, '');
+
+    // Formatear automáticamente con puntos de miles y coma decimal
+    const formatted = formatMilesVES(input);
+    const numVal = parseVenezuelanNumber(formatted);
+
+    const rateClean = parseVenezuelanNumber(tasaBCV);
+    const rate = rateClean > 0 ? rateClean : 1;
+
     setItems(prev => {
       const next = [...prev];
       const item = { ...next[index] };
+
       if (monedaIngreso === 'VES') {
-        item.precio_bs = value;
-        item.precio = value && rate > 0 ? (parseFloat(value) / rate).toFixed(4) : '';
+        item.precio_bs = formatted;
+        item.precio = formatted && numVal > 0 && rate > 0 ? (numVal / rate).toFixed(4) : '';
       } else {
-        item.precio = value;
-        item.precio_bs = value && rate > 0 ? (parseFloat(value) * rate).toFixed(2) : '';
+        item.precio = formatted;
+        item.precio_bs = formatted && numVal > 0 && rate > 0 ? formatNumber(numVal * rate, 2) : '';
       }
       next[index] = item;
       return next;
+    });
+  };
+
+  // Al perder el foco (onBlur), asegurar que los decimales queden formalizados (ej: 6.857,00)
+  const handlePrecioBlur = (index) => {
+    setItems(prev => {
+      const next = [...prev];
+      const item = { ...next[index] };
+      const currentVal = monedaIngreso === 'VES' ? item.precio_bs : item.precio;
+      if (!currentVal) return prev;
+
+      const numVal = parseVenezuelanNumber(currentVal);
+      if (numVal > 0) {
+        const withDecimals = formatNumber(numVal, 2);
+        const rateClean = parseVenezuelanNumber(tasaBCV);
+        const rate = rateClean > 0 ? rateClean : 1;
+
+        if (monedaIngreso === 'VES') {
+          item.precio_bs = withDecimals;
+          item.precio = (numVal / rate).toFixed(4);
+        } else {
+          item.precio = withDecimals;
+          item.precio_bs = formatNumber(numVal * rate, 2);
+        }
+        next[index] = item;
+        return next;
+      }
+      return prev;
     });
   };
 
@@ -129,13 +192,13 @@ export default function FacturadorForm({
   const agregarItem = () => {
     setItems(prev => [
       ...prev,
-      { id: Date.now(), cantidad: 1, descripcion: '', precio: '' }
+      { id: Date.now(), cantidad: 1, descripcion: '', precio: '', precio_bs: '' }
     ]);
   };
 
   const eliminarItem = (index) => {
     if (items.length === 1) {
-      setItems([{ id: Date.now(), cantidad: 1, descripcion: '', precio: '' }]);
+      setItems([{ id: Date.now(), cantidad: 1, descripcion: '', precio: '', precio_bs: '' }]);
       return;
     }
     setItems(prev => prev.filter((_, i) => i !== index));
@@ -154,14 +217,14 @@ export default function FacturadorForm({
     }
   };
 
-  // Validación estricta para activar el botón de emitir factura
+  // Validación estricta para activar el botón de emitir factura con parseVenezuelanNumber
   const tieneItemsValidos = items.some(it => {
     const hasDesc = it.descripcion && it.descripcion.trim().length > 0;
     const hasQty = parseFloat(it.cantidad) > 0;
-    const hasPrice = monedaIngreso === 'VES' 
-      ? parseFloat(it.precio_bs) > 0 
-      : parseFloat(it.precio) > 0;
-    return hasDesc && hasQty && hasPrice;
+    const priceVal = monedaIngreso === 'VES' 
+      ? parseVenezuelanNumber(it.precio_bs)
+      : parseVenezuelanNumber(it.precio);
+    return hasDesc && hasQty && priceVal > 0;
   });
 
   const formularioValido = Boolean(
@@ -216,12 +279,14 @@ export default function FacturadorForm({
             
             <div className="flex items-center gap-2">
               <input
-                type="number"
-                step="0.0001"
-                min="0.01"
+                type="text"
+                inputMode="decimal"
                 value={tasaBCV}
-                onChange={(e) => setTasaBCV(e.target.value)}
-                placeholder="0.00"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9.,]/g, '');
+                  setTasaBCV(val);
+                }}
+                placeholder="0,00"
                 className="w-32 sm:w-36 bg-[#0B0F19] border border-white/[0.12] rounded-xl px-3 py-1.5 font-mono font-black text-white text-base focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-right shadow-inner transition-all duration-200"
               />
               <span className="text-xs font-mono font-bold text-emerald-400 px-1">Bs.</span>
@@ -320,15 +385,25 @@ export default function FacturadorForm({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
-              Teléfono de Contacto
+            <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+              <span>Teléfono de Contacto</span>
+              <span className="text-[10px] text-slate-500 font-normal">Solo números</span>
             </label>
             <input
-              type="text"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={12}
               value={cliente.telefono}
-              onChange={(e) => handleClienteChange('telefono', e.target.value)}
+              onChange={(e) => handleTelefonoChange(e.target.value)}
+              onKeyDown={(e) => {
+                // Bloquear cualquier tecla que no sea dígito numérico, permitiendo teclas de control
+                if (e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="Ej: 0414-1234567"
-              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-white placeholder:text-slate-500 shadow-inner min-h-[46px]"
+              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-white font-mono placeholder:text-slate-500 tracking-wider shadow-inner min-h-[46px]"
             />
           </div>
 
@@ -506,16 +581,17 @@ export default function FacturadorForm({
             <tbody className="divide-y divide-white/[0.04]">
               {items.map((item, index) => {
                 const qty = parseFloat(item.cantidad) || 0;
-                const rate = parseFloat(tasaBCV) || 1;
+                const rateClean = parseVenezuelanNumber(tasaBCV);
+                const rate = rateClean > 0 ? rateClean : 1;
 
                 let unitPriceUSD = 0;
                 let unitPriceBs = 0;
 
                 if (monedaIngreso === 'VES') {
-                  unitPriceBs = parseFloat(item.precio_bs) || 0;
+                  unitPriceBs = parseVenezuelanNumber(item.precio_bs);
                   unitPriceUSD = rate > 0 ? unitPriceBs / rate : 0;
                 } else {
-                  unitPriceUSD = parseFloat(item.precio) || 0;
+                  unitPriceUSD = parseVenezuelanNumber(item.precio);
                   unitPriceBs = unitPriceUSD * rate;
                 }
 
@@ -560,13 +636,13 @@ export default function FacturadorForm({
                           {monedaIngreso === 'VES' ? 'Bs.' : '$'}
                         </span>
                         <input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          type="text"
+                          inputMode="decimal"
                           value={monedaIngreso === 'VES' ? (item.precio_bs ?? '') : (item.precio ?? '')}
                           onChange={(e) => handlePrecioChange(index, e.target.value)}
+                          onBlur={() => handlePrecioBlur(index)}
                           onKeyDown={(e) => handleKeyDown(e, index)}
-                          placeholder="0.00"
+                          placeholder={monedaIngreso === 'VES' ? '0,00' : '0.00'}
                           className="w-full input-cockpit rounded-xl pl-10 pr-3 py-2 text-sm text-right font-mono font-black text-white shadow-inner"
                         />
                       </div>
@@ -607,16 +683,17 @@ export default function FacturadorForm({
         <div className="md:hidden space-y-3">
           {items.map((item, index) => {
             const qty = parseFloat(item.cantidad) || 0;
-            const rate = parseFloat(tasaBCV) || 1;
+            const rateClean = parseVenezuelanNumber(tasaBCV);
+            const rate = rateClean > 0 ? rateClean : 1;
 
             let unitPriceUSD = 0;
             let unitPriceBs = 0;
 
             if (monedaIngreso === 'VES') {
-              unitPriceBs = parseFloat(item.precio_bs) || 0;
+              unitPriceBs = parseVenezuelanNumber(item.precio_bs);
               unitPriceUSD = rate > 0 ? unitPriceBs / rate : 0;
             } else {
-              unitPriceUSD = parseFloat(item.precio) || 0;
+              unitPriceUSD = parseVenezuelanNumber(item.precio);
               unitPriceBs = unitPriceUSD * rate;
             }
 
@@ -697,12 +774,12 @@ export default function FacturadorForm({
                         {monedaIngreso === 'VES' ? 'Bs.' : '$'}
                       </span>
                       <input
-                        type="number"
-                        step="0.01"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         value={monedaIngreso === 'VES' ? (item.precio_bs ?? '') : (item.precio ?? '')}
                         onChange={(e) => handlePrecioChange(index, e.target.value)}
-                        placeholder="0.00"
+                        onBlur={() => handlePrecioBlur(index)}
+                        placeholder={monedaIngreso === 'VES' ? '0,00' : '0.00'}
                         className="w-full h-11 input-cockpit rounded-xl pl-9 pr-3 text-base text-right font-mono font-bold text-white"
                       />
                     </div>
@@ -788,13 +865,20 @@ export default function FacturadorForm({
             </span>
           </div>
 
-          <div className="relative pt-3 border-t border-white/[0.08] flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-extrabold text-white font-heading tracking-wide">
-              TOTAL A PAGAR (BOLÍVARES):
-            </span>
-            <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-              {formatVES(totals.totalBs)}
-            </span>
+          <div className="relative pt-4 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-end justify-between gap-2.5">
+            <div>
+              <span className="text-xs font-extrabold text-slate-300 font-heading uppercase tracking-wider block">
+                Total a Pagar (Bolívares)
+              </span>
+              <span className="text-[11px] text-emerald-400/80 font-mono font-medium">
+                Monto oficial con I.V.A. (16%)
+              </span>
+            </div>
+            <div className="text-left sm:text-right">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)] tracking-tight">
+                {formatVES(totals.totalBs)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -821,13 +905,20 @@ export default function FacturadorForm({
             <span className="font-mono font-bold text-white text-sm sm:text-base">{formatUSD(totals.iva)}</span>
           </div>
 
-          <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-extrabold text-white font-heading tracking-wide">
-              TOTAL A PAGAR (USD):
-            </span>
-            <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]">
-              {formatUSD(totals.totalUSD)}
-            </span>
+          <div className="pt-4 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-end justify-between gap-2.5">
+            <div>
+              <span className="text-xs font-extrabold text-slate-300 font-heading uppercase tracking-wider block">
+                Total a Pagar (USD)
+              </span>
+              <span className="text-[11px] text-rose-400/80 font-mono font-medium">
+                Monto referencial en Divisas
+              </span>
+            </div>
+            <div className="text-left sm:text-right">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] tracking-tight">
+                {formatUSD(totals.totalUSD)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -839,8 +930,8 @@ export default function FacturadorForm({
         </div>
       )}
 
-      {/* 5. Barra de Acciones Flotante del Mostrador (Glassmorphism Sticky) */}
-      <div className="glass-card rounded-3xl p-3.5 sm:p-4.5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sticky bottom-4 z-30 shadow-2xl shadow-black/80">
+      {/* 5. Barra de Acciones Flotante del Mostrador (Fondo sólido para evitar transparencias molestas) */}
+      <div className="bg-[#0B0F19]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-3.5 sm:p-4.5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sticky bottom-4 z-30 shadow-2xl shadow-black/90">
         <button
           type="button"
           onClick={onLimpiar}

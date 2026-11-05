@@ -23,10 +23,72 @@ export function formatVES(amount) {
 }
 
 /**
- * Formateador de números decimales simples
+ * Parser matemático seguro para números en formato venezolano
+ * Maneja puntos de miles (ej: "6.857,89" o "1.000.000") y coma decimal (",")
+ */
+export function parseVenezuelanNumber(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const str = String(val).trim();
+  if (!str) return 0;
+
+  // Si contiene coma, la coma es el separador decimal y los puntos son de miles
+  if (str.includes(',')) {
+    const clean = str.replace(/\./g, '').replace(',', '.');
+    return parseFloat(clean) || 0;
+  }
+
+  // Si no contiene comas pero tiene puntos
+  if (str.includes('.')) {
+    const parts = str.split('.');
+    // Si tiene 1 o 2 decimales y un solo punto (ej: tasa BCV 894.8876 o 6857.89 antes de formatear)
+    if (parts.length === 2 && parts[1].length !== 3) {
+      return parseFloat(str) || 0;
+    }
+    // Es separador de miles sin decimales (ej: 6.857 o 27.431 o 1.000.000)
+    return parseFloat(str.replace(/\./g, '')) || 0;
+  }
+
+  return parseFloat(str) || 0;
+}
+
+/**
+ * Normaliza y formatea un valor numérico agregando puntos de miles automáticamente
+ * Ejemplo: "6857" -> "6.857", "6857,89" -> "6.857,89", "6857,8" -> "6.857,8"
+ */
+export function formatMilesVES(val) {
+  if (val === null || val === undefined) return '';
+  let str = String(val).trim();
+  if (!str) return '';
+
+  // Si el usuario escribe o pega con coma decimal
+  if (str.includes(',')) {
+    const parts = str.split(',');
+    const intDigits = parts[0].replace(/\D/g, '');
+    const decDigits = parts.slice(1).join('').replace(/\D/g, '').slice(0, 2);
+
+    const formattedInt = intDigits 
+      ? new Intl.NumberFormat('de-DE').format(Number(intDigits)) 
+      : '0';
+
+    return `${formattedInt},${decDigits}`;
+  }
+
+  // Si no tiene coma decimal, formatear parte entera con separador de miles
+  const intDigits = str.replace(/\D/g, '');
+  if (!intDigits) return '';
+  return new Intl.NumberFormat('de-DE').format(Number(intDigits));
+}
+
+/**
+ * Formateador de números con estándar oficial de Venezuela (coma decimal y punto para miles)
  */
 export function formatNumber(num, decimals = 2) {
-  return Number(num || 0).toFixed(decimals);
+  const n = parseVenezuelanNumber(num);
+  return new Intl.NumberFormat('de-DE', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(n);
 }
 
 /**
@@ -45,10 +107,11 @@ export function formatDate(dateString) {
 
 /**
  * Cálculos matemáticos de facturación con IVA del 16%
- * Soporta ingreso tanto en Bolívares (VES) como en Dólares (USD)
+ * Soporta ingreso tanto en Bolívares (VES) como en Dólares (USD) con puntos de miles y comas
  */
 export function calculateTotals(items = [], tasaBCV = 1, monedaIngreso = 'USD') {
-  const rate = parseFloat(tasaBCV) || 1;
+  const rateClean = parseVenezuelanNumber(tasaBCV);
+  const rate = rateClean > 0 ? rateClean : 1;
 
   let baseImponibleUSD = 0;
   let baseImponibleBs = 0;
@@ -59,17 +122,17 @@ export function calculateTotals(items = [], tasaBCV = 1, monedaIngreso = 'USD') 
     let priceBs = 0;
 
     if (monedaIngreso === 'VES') {
-      // Priorizar precio en Bolívares introducido directamente
+      // Priorizar precio en Bolívares introducido directamente (soporta puntos de miles y coma)
       if (item.precio_bs !== undefined && item.precio_bs !== '') {
-        priceBs = parseFloat(item.precio_bs) || 0;
+        priceBs = parseVenezuelanNumber(item.precio_bs);
         priceUSD = rate > 0 ? priceBs / rate : 0;
       } else {
-        priceUSD = parseFloat(item.precio) || 0;
+        priceUSD = parseVenezuelanNumber(item.precio);
         priceBs = priceUSD * rate;
       }
     } else {
       // Priorizar precio en Dólares ($)
-      priceUSD = parseFloat(item.precio) || 0;
+      priceUSD = parseVenezuelanNumber(item.precio);
       priceBs = priceUSD * rate;
     }
 
