@@ -249,11 +249,11 @@ export default function FacturadorForm({
 
         <div className="relative flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 bg-white rounded-full p-1 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] border-2 border-emerald-500/50 flex-shrink-0 group-hover:scale-105 transition-all duration-200">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500/15 to-teal-500/10 border border-emerald-500/30 rounded-2xl p-2 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.2)] flex-shrink-0 group-hover:scale-105 transition-all duration-200">
               <img
                 src="/bcv_logo.svg"
                 alt="Banco Central de Venezuela"
-                className="w-full h-full object-contain rounded-full"
+                className="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]"
               />
             </div>
             <div>
