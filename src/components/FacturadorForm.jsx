@@ -55,7 +55,7 @@ export default function FacturadorForm({
     setCliente(prev => ({ ...prev, [field]: value }));
   };
 
-  // Manejador inteligente y ultra-rápido para Cédula o RIF (auto-agrega el guión al escribir V o J)
+  // Manejador inteligente y ultra-rápido para Cédula o RIF con auto-puntos de miles (ej: V-26.946.393)
   const handleDocumentoChange = (raw) => {
     const prev = cliente.documento || '';
     let val = raw.toUpperCase().replace(/\s+/g, '');
@@ -71,26 +71,62 @@ export default function FacturadorForm({
       return;
     }
 
-    // 1. Si escribe una letra de prefijo (V, J, E, G, P), pone automáticamente el guión '-'
-    if (['V', 'J', 'E', 'G', 'P'].includes(val)) {
-      val = `${val}-`;
-    } 
-    // 2. Si escribe la letra y números pegados (ej: V18456789 o J30123456), agrega el guión
-    else if (/^[VJEGP]\d/.test(val)) {
-      val = `${val[0]}-${val.slice(1)}`;
-    } 
-    // 3. Si escribe directamente números sin prefijo (ej: 18456789), asume V- por defecto
-    else if (/^\d/.test(val)) {
-      val = `V-${val}`;
+    let prefix = 'V';
+    let rest = val;
+
+    const match = val.match(/^([VJEGP])(-?)(.*)$/);
+    if (match) {
+      prefix = match[1];
+      const hasDash = match[2];
+      rest = match[3];
+
+      if (!hasDash && !rest) {
+        handleClienteChange('documento', `${prefix}-`);
+        return;
+      }
+    } else if (/^\d/.test(val)) {
+      prefix = 'V';
+      rest = val;
     }
 
-    handleClienteChange('documento', val);
+    // Extraer solo los números del cuerpo del documento
+    let digits = rest.replace(/\D/g, '');
+    if (!digits) {
+      handleClienteChange('documento', `${prefix}-`);
+      return;
+    }
+
+    // Aplicar formato con puntos de miles según tipo (Cédula o RIF)
+    let formattedDoc = '';
+    if (['V', 'E'].includes(prefix)) {
+      // Cédula venezolana / extranjera: máximo 8 dígitos (ej: 26.946.393)
+      digits = digits.slice(0, 8);
+      const withDots = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      formattedDoc = `${prefix}-${withDots}`;
+    } else {
+      // RIF (J, G, P): 8 dígitos base + 1 dígito verificador opcional (ej: J-41.265.448-9)
+      digits = digits.slice(0, 9);
+      if (digits.length === 9) {
+        const base = digits.slice(0, 8).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        formattedDoc = `${prefix}-${base}-${digits.slice(8)}`;
+      } else {
+        const withDots = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        formattedDoc = `${prefix}-${withDots}`;
+      }
+    }
+
+    handleClienteChange('documento', formattedDoc);
   };
 
-  // Selector rápido para cambiar entre V, J, E o G con un solo clic conservando los números
+  // Selector rápido para cambiar entre V, J, E o G con un solo clic conservando los números y puntos
   const seleccionarPrefijo = (prefijo) => {
-    const numPart = (cliente.documento || '').replace(/^[^0-9]*/, '');
-    handleClienteChange('documento', `${prefijo}-${numPart}`);
+    const docActual = cliente.documento || '';
+    const numPart = docActual.replace(/^[VJEGP]-\s*/i, '');
+    if (!numPart) {
+      handleClienteChange('documento', `${prefijo}-`);
+    } else {
+      handleDocumentoChange(`${prefijo}-${numPart}`);
+    }
   };
 
   // Manejador estricto para Teléfono: solo números y autoformato (ej: 0414-1234567)
@@ -369,7 +405,7 @@ export default function FacturadorForm({
               type="text"
               value={cliente.documento}
               onChange={(e) => handleDocumentoChange(e.target.value)}
-              placeholder="Ej: V-18456789 o J-30123456"
+              placeholder="Ej: V-26.946.393 o J-41.265.448-9"
               className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-white font-mono placeholder:text-slate-500 tracking-wider shadow-inner min-h-[46px]"
             />
           </div>
