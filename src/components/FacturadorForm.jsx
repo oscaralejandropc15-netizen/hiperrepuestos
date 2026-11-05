@@ -142,6 +142,22 @@ export default function FacturadorForm({
     }
   };
 
+  // Validación estricta para activar el botón de emitir factura
+  const tieneItemsValidos = items.some(it => {
+    const hasDesc = it.descripcion && it.descripcion.trim().length > 0;
+    const hasQty = parseFloat(it.cantidad) > 0;
+    const hasPrice = monedaIngreso === 'VES' 
+      ? parseFloat(it.precio_bs) > 0 
+      : parseFloat(it.precio) > 0;
+    return hasDesc && hasQty && hasPrice;
+  });
+
+  const formularioValido = Boolean(
+    cliente.nombre?.trim() &&
+    cliente.documento?.trim() &&
+    tieneItemsValidos
+  );
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in pb-10">
       {/* Alerta de Error */}
@@ -742,6 +758,13 @@ export default function FacturadorForm({
         </div>
       </div>
 
+      {/* Mensaje de guía si faltan datos para emitir */}
+      {!formularioValido && (
+        <div className="bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-2.5 text-center text-xs text-slate-400">
+          💡 Para habilitar la emisión de factura: indica la <strong className="text-slate-200">Cédula/RIF</strong>, <strong className="text-slate-200">Nombre</strong> del cliente y al menos un <strong className="text-slate-200">repuesto con precio mayor a 0</strong>.
+        </div>
+      )}
+
       {/* 5. Barra de Acciones del Mostrador (Táctil y Responsive) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sticky bottom-3 z-30 shadow-2xl">
         <button
@@ -750,28 +773,36 @@ export default function FacturadorForm({
           className="inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs sm:text-sm font-bold transition-colors active:scale-95 min-h-[44px]"
         >
           <RotateCcw className="w-4 h-4" />
-          <span>Nueva Guía / Limpiar</span>
+          <span>Nueva Factura / Limpiar</span>
         </button>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+          {/* Botón para solo registrar la factura sin abrir el visor PDF */}
           <button
             type="button"
             onClick={onGuardar}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 hover:text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 min-h-[44px]"
+            disabled={!formularioValido || loading}
+            title={!formularioValido ? 'Completa los datos del cliente y los repuestos para guardar' : 'Guardar la factura en el historial del sistema'}
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 hover:text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
           >
             <Save className="w-4 h-4 text-emerald-400" />
-            <span>{loading ? 'Guardando...' : 'Guardar en Supabase'}</span>
+            <span>{loading ? 'Guardando...' : 'Solo Guardar'}</span>
           </button>
 
+          {/* Botón Principal: Solo se puede presionar al completar todos los datos */}
           <button
             type="button"
             onClick={onImprimir}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 sm:py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-extrabold shadow-lg shadow-red-950/50 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 min-h-[48px]"
+            disabled={!formularioValido || loading}
+            title={!formularioValido ? 'Rellena el formulario completo para emitir la factura' : 'Emitir factura oficial y descargar PDF'}
+            className={`inline-flex items-center justify-center gap-2 px-6 py-3.5 sm:py-2.5 rounded-xl text-sm font-extrabold shadow-lg transition-all min-h-[48px] ${
+              formularioValido && !loading
+                ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-950/50 hover:scale-[1.01] active:scale-95 cursor-pointer'
+                : 'bg-slate-800 border border-slate-700/80 text-slate-500 opacity-40 cursor-not-allowed shadow-none'
+            }`}
           >
             <Printer className="w-4 h-4" />
-            <span>Emitir e Imprimir Guía (PDF)</span>
+            <span>{loading ? 'Procesando...' : 'Emitir e Imprimir Factura (PDF)'}</span>
           </button>
         </div>
       </div>
