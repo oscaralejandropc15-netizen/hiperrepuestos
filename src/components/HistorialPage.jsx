@@ -296,84 +296,141 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
             No se encontraron guías con los filtros aplicados.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs sm:text-sm">
-              <thead>
-                <tr className="bg-[#0B0F19]/90 border-b border-white/[0.08] text-[11px] font-extrabold text-slate-400 uppercase tracking-wider font-heading">
-                  <th className="py-3.5 px-4">Factura / Control</th>
-                  <th className="py-3.5 px-4">Fecha y Hora</th>
-                  <th className="py-3.5 px-4">Cliente / Razón Social</th>
-                  <th className="py-3.5 px-4 text-center">Renglones</th>
-                  <th className="py-3.5 px-4 text-right">Total ($ USD)</th>
-                  <th className="py-3.5 px-4 text-right">Total (Bs.)</th>
-                  <th className="py-3.5 px-4 text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {guiasPaginadas.map((guia) => (
-                  <tr key={guia.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div>
-                        <span className="font-mono font-black text-rose-300 bg-rose-600/15 border border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
-                          FACTURA Nº {(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
-                        </span>
-                        <div className="text-[10px] font-mono text-slate-400 mt-1">
-                          Control: 00-{(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-slate-300 font-mono text-xs">
-                      {formatDate(guia.fecha)}
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-white tracking-wide">{guia.cliente_nombre}</div>
-                      <div className="text-xs text-slate-400 font-mono">{guia.cliente_documento}</div>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-center font-mono text-slate-300">
-                      <span className="px-2 py-0.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                        {guia.items?.length || 0}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right font-mono font-black text-white">
-                      {formatUSD(guia.total_usd)}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-400">
-                      {formatVES(guia.total_bs)}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => onVerGuia(guia)}
-                          title="Ver y reimprimir guía"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/[0.08] hover:border-emerald-500/30 rounded-xl text-xs font-bold transition-all min-h-[36px] cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="hidden sm:inline">Ver</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setGuiaAEliminar(guia);
-                            setError(null);
-                          }}
-                          title="Eliminar guía"
-                          className="p-2 bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/[0.08] hover:border-rose-500/30 rounded-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            {/* VISTA 1: TABLA PARA COMPUTADORAS Y TABLETS */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr className="bg-[#0B0F19]/90 border-b border-white/[0.08] text-[11px] font-extrabold text-slate-400 uppercase tracking-wider font-heading">
+                    <th className="py-3.5 px-4">Factura / Control</th>
+                    <th className="py-3.5 px-4">Fecha y Hora</th>
+                    <th className="py-3.5 px-4">Cliente / Razón Social</th>
+                    <th className="py-3.5 px-4 text-center">Renglones</th>
+                    <th className="py-3.5 px-4 text-right">Total ($ USD)</th>
+                    <th className="py-3.5 px-4 text-right">Total (Bs.)</th>
+                    <th className="py-3.5 px-4 text-center">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {guiasPaginadas.map((guia) => (
+                    <tr key={guia.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div>
+                          <span className="font-mono font-black text-rose-300 bg-rose-600/15 border border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
+                            FACTURA Nº {(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
+                          </span>
+                          <div className="text-[10px] font-mono text-slate-400 mt-1">
+                            Control: 00-{(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-300 font-mono text-xs">
+                        {formatDate(guia.fecha)}
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-white tracking-wide">{guia.cliente_nombre}</div>
+                        <div className="text-xs text-slate-400 font-mono">{guia.cliente_documento}</div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center font-mono text-slate-300">
+                        <span className="px-2 py-0.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                          {guia.items?.length || 0}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-white">
+                        {formatUSD(guia.total_usd)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-400">
+                        {formatVES(guia.total_bs)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => onVerGuia(guia)}
+                            title="Ver y reimprimir guía"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/[0.08] hover:border-emerald-500/30 rounded-xl text-xs font-bold transition-all min-h-[36px] cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="hidden sm:inline">Ver</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setGuiaAEliminar(guia);
+                              setError(null);
+                            }}
+                            title="Eliminar guía"
+                            className="p-2 bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/[0.08] hover:border-rose-500/30 rounded-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* VISTA 2: TARJETAS COMPACTAS PARA TELÉFONOS */}
+            <div className="md:hidden divide-y divide-white/[0.06] p-3 space-y-3">
+              {guiasPaginadas.map((guia) => (
+                <div key={guia.id} className="bg-[#06080F]/90 p-4 rounded-2xl border border-white/[0.08] space-y-3 shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-black text-rose-300 bg-rose-600/15 border border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
+                      FACTURA Nº {(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {formatDate(guia.fecha)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="font-bold text-white text-sm tracking-wide">{guia.cliente_nombre}</div>
+                    <div className="text-xs text-slate-400 font-mono">{guia.cliente_documento}</div>
+                  </div>
+
+                  <div className="flex items-end justify-between pt-2.5 border-t border-white/[0.06]">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Total a Pagar (Bs.):</span>
+                      <span className="text-base font-black font-mono text-emerald-400 block">
+                        {formatVES(guia.total_bs)}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        ≈ {formatUSD(guia.total_usd)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onVerGuia(guia)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.1] rounded-xl text-xs font-bold transition-all min-h-[38px] cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Ver</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setGuiaAEliminar(guia);
+                          setError(null);
+                        }}
+                        className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center cursor-pointer"
+                        title="Eliminar factura"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {/* 5. Controles de Paginación */}

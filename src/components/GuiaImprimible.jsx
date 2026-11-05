@@ -109,29 +109,31 @@ export default function GuiaImprimible({
         </div>
 
         <div className="grid grid-cols-12 divide-x divide-slate-900">
-          <div className="col-span-4 py-2 px-3 flex items-center gap-2 min-h-[34px]">
+          <div className="col-span-4 py-2 px-2.5 flex items-center gap-1.5 min-h-[34px]">
             <span className="font-bold text-slate-900 text-xs whitespace-nowrap flex-shrink-0">R.I.F. / C.I.:</span>
-            <span className="font-mono font-black text-black text-sm tracking-wider">
+            <span className="font-mono font-black text-black text-xs sm:text-sm tracking-wider whitespace-nowrap">
               {cliente.documento || 'V-00000000'}
             </span>
           </div>
 
-          <div className="col-span-4 py-2 px-3 flex items-center gap-2 min-h-[34px]">
+          <div className="col-span-3 py-2 px-2.5 flex items-center gap-1.5 min-h-[34px]">
             <span className="font-bold text-slate-900 text-xs whitespace-nowrap flex-shrink-0">Telf.:</span>
-            <span className="font-bold text-black text-xs">
+            <span className="font-bold text-black text-xs truncate">
               {cliente.telefono || 'N/A'}
             </span>
           </div>
 
-          <div className="col-span-4 py-2 px-3 flex items-center justify-between text-xs min-h-[34px]">
-            <span className="font-bold text-slate-900 whitespace-nowrap">Condiciones de Pago:</span>
-            <div className="flex items-center gap-3 font-bold text-black">
+          <div className="col-span-5 py-2 px-2.5 flex items-center justify-between text-xs min-h-[34px]">
+            <span className="font-bold text-slate-900 text-[11px] whitespace-nowrap flex-shrink-0">
+              Condiciones de Pago:
+            </span>
+            <div className="flex items-center gap-2.5 font-bold text-black text-[11px] flex-shrink-0">
               <label className="flex items-center gap-1">
                 <input 
                   type="checkbox" 
                   checked={condicionPago === 'CONTADO'} 
                   readOnly 
-                  className="rounded border-slate-900 text-slate-900" 
+                  className="rounded border-slate-900 text-slate-900 w-3 h-3" 
                 />
                 <span>CONTADO</span>
               </label>
@@ -140,7 +142,7 @@ export default function GuiaImprimible({
                   type="checkbox" 
                   checked={condicionPago === 'CRÉDITO'} 
                   readOnly 
-                  className="rounded border-slate-900 text-slate-900" 
+                  className="rounded border-slate-900 text-slate-900 w-3 h-3" 
                 />
                 <span>CRÉDITO</span>
               </label>
