@@ -776,35 +776,21 @@ export default function FacturadorForm({
           <span>Nueva Factura / Limpiar</span>
         </button>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
-          {/* Botón para solo registrar la factura sin abrir el visor PDF */}
-          <button
-            type="button"
-            onClick={onGuardar}
-            disabled={!formularioValido || loading}
-            title={!formularioValido ? 'Completa los datos del cliente y los repuestos para guardar' : 'Guardar la factura en el historial del sistema'}
-            className="inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 hover:text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
-          >
-            <Save className="w-4 h-4 text-emerald-400" />
-            <span>{loading ? 'Guardando...' : 'Solo Guardar'}</span>
-          </button>
-
-          {/* Botón Principal: Solo se puede presionar al completar todos los datos */}
-          <button
-            type="button"
-            onClick={onImprimir}
-            disabled={!formularioValido || loading}
-            title={!formularioValido ? 'Rellena el formulario completo para emitir la factura' : 'Emitir factura oficial y descargar PDF'}
-            className={`inline-flex items-center justify-center gap-2 px-6 py-3.5 sm:py-2.5 rounded-xl text-sm font-extrabold shadow-lg transition-all min-h-[48px] ${
-              formularioValido && !loading
-                ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-950/50 hover:scale-[1.01] active:scale-95 cursor-pointer'
-                : 'bg-slate-800 border border-slate-700/80 text-slate-500 opacity-40 cursor-not-allowed shadow-none'
-            }`}
-          >
-            <Printer className="w-4 h-4" />
-            <span>{loading ? 'Procesando...' : 'Emitir e Imprimir Factura (PDF)'}</span>
-          </button>
-        </div>
+        {/* Botón Único de Acción: Guarda automáticamente en base de datos y genera la factura PDF en 1 solo paso */}
+        <button
+          type="button"
+          onClick={onImprimir}
+          disabled={!formularioValido || loading}
+          title={!formularioValido ? 'Rellena el formulario completo para emitir la factura' : 'Guarda la venta en el sistema y emite la factura en PDF'}
+          className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 sm:py-2.5 rounded-xl text-sm font-extrabold shadow-lg transition-all min-h-[48px] ${
+            formularioValido && !loading
+              ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-950/50 hover:scale-[1.01] active:scale-95 cursor-pointer'
+              : 'bg-slate-800 border border-slate-700/80 text-slate-500 opacity-40 cursor-not-allowed shadow-none'
+          }`}
+        >
+          <Printer className="w-4 h-4" />
+          <span>{loading ? 'Guardando y Emitiendo...' : 'Emitir e Imprimir Factura (PDF)'}</span>
+        </button>
       </div>
     </div>
   );
