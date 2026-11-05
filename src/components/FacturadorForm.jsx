@@ -756,41 +756,68 @@ export default function FacturadorForm({
 
       {/* 4. Resumen de Totales - Twin HUD Telemetry Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-        {/* Recuadro de Bolívares Oficial BCV */}
-        <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden flex flex-col justify-between border-t-2 border-t-emerald-500/80 group">
+        {/* Recuadro de Bolívares Oficial BCV con Desglose Completo de IVA */}
+        <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden space-y-3 border-t-2 border-t-emerald-500/80 group">
           <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/15 transition-all duration-300"></div>
 
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 font-heading">
-                Total a Pagar en Bolívares
-              </span>
-              <span className="text-[11px] font-mono font-bold px-2.5 py-1 bg-[#06080F] border border-emerald-500/30 text-emerald-300 rounded-xl">
-                Tasa: {formatNumber(tasaBCV, 2)} Bs/$
-              </span>
-            </div>
-            
-            <div className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono text-emerald-400 tracking-tight my-3 break-words drop-shadow-[0_0_25px_rgba(16,185,129,0.2)]">
-              {formatVES(totals.totalBs)}
-            </div>
+          <div className="relative flex items-center justify-between mb-2">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 font-heading">
+              Cálculo Oficial en Bolívares (BCV)
+            </span>
+            <span className="text-[11px] font-mono font-bold px-2.5 py-1 bg-[#06080F] border border-emerald-500/30 text-emerald-300 rounded-xl shadow-inner">
+              Tasa: {formatNumber(tasaBCV, 2)} Bs/$
+            </span>
           </div>
 
-          <p className="relative text-[10px] sm:text-[11px] text-slate-400 mt-3 pt-3 border-t border-white/[0.06] tracking-wide">
-            * Conforme a la tasa oficial certificada por el Banco Central de Venezuela.
-          </p>
+          <div className="relative flex items-center justify-between text-xs sm:text-sm text-slate-300">
+            <span className="font-medium">Base Imponible (Subtotal Bs.):</span>
+            <span className="font-mono font-bold text-white text-sm sm:text-base">
+              {formatVES(totals.baseImponibleBs)}
+            </span>
+          </div>
+
+          <div className="relative flex items-center justify-between text-xs sm:text-sm text-slate-300">
+            <span className="font-medium flex items-center gap-1.5">
+              <span>I.V.A. (16.00% en Bs.):</span>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded">
+                SENIAT
+              </span>
+            </span>
+            <span className="font-mono font-bold text-emerald-300 text-sm sm:text-base">
+              {formatVES(totals.ivaBs)}
+            </span>
+          </div>
+
+          <div className="relative pt-3 border-t border-white/[0.08] flex items-center justify-between">
+            <span className="text-xs sm:text-sm font-extrabold text-white font-heading tracking-wide">
+              TOTAL A PAGAR (BOLÍVARES):
+            </span>
+            <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+              {formatVES(totals.totalBs)}
+            </span>
+          </div>
         </div>
 
         {/* Desglose Matemático USD */}
         <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden space-y-3 border-t-2 border-t-rose-500/80 group">
           <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-rose-500/15 transition-all duration-300"></div>
 
+          <div className="relative flex items-center justify-between mb-2">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-rose-400 font-heading">
+              Desglose de Referencia (USD)
+            </span>
+            <span className="text-[11px] font-mono font-bold px-2.5 py-1 bg-[#06080F] border border-rose-500/30 text-rose-300 rounded-xl shadow-inner">
+              $ Dólares
+            </span>
+          </div>
+
           <div className="flex items-center justify-between text-xs sm:text-sm text-slate-300">
-            <span className="font-medium">Base Imponible (Subtotal):</span>
+            <span className="font-medium">Base Imponible (Subtotal $):</span>
             <span className="font-mono font-bold text-white text-sm sm:text-base">{formatUSD(totals.baseImponible)}</span>
           </div>
 
           <div className="flex items-center justify-between text-xs sm:text-sm text-slate-300">
-            <span className="font-medium">I.V.A. (16.00%):</span>
+            <span className="font-medium">I.V.A. (16.00% en $):</span>
             <span className="font-mono font-bold text-white text-sm sm:text-base">{formatUSD(totals.iva)}</span>
           </div>
 
