@@ -2,7 +2,7 @@ import React from 'react';
 import { formatVES, formatNumber, parseVenezuelanNumber } from '../lib/formatters';
 
 export default function GuiaImprimible({
-  codigoGuia = 'GD-000474',
+  codigoGuia = 'GD-000001',
   fecha,
   cliente = {},
   items = [],
@@ -17,8 +17,8 @@ export default function GuiaImprimible({
   const mes = String(d.getMonth() + 1).padStart(2, '0');
   const anio = String(d.getFullYear());
 
-  // Extraer número de 6 dígitos del código (ej. GD-000474 -> 000474)
-  const numFactura = (codigoGuia || '').replace(/^GD-/, '') || '000474';
+  // Extraer número de 6 dígitos del código (ej. GD-000001 -> 000001)
+  const numFactura = (codigoGuia || '').replace(/^GD-/, '') || '000001';
   const nroControl = `00-${numFactura}`;
 
   return (
@@ -86,46 +86,46 @@ export default function GuiaImprimible({
 
       {/* 2. Cajas Tabulares de Datos del Cliente */}
       <div className="border-2 border-slate-900 text-xs mb-3">
-        <div className="grid grid-cols-1 border-b border-slate-900 p-1.5 bg-slate-50/50">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-800 text-[11px] whitespace-nowrap">
+        <div className="border-b border-slate-900 py-2.5 px-3 bg-slate-50/50 min-h-[36px] flex items-center">
+          <div className="flex items-center gap-2 w-full leading-normal">
+            <span className="font-bold text-slate-900 text-xs whitespace-nowrap flex-shrink-0">
               Nombre, Apellido o Razón Social:
             </span>
-            <span className="font-bold text-slate-950 uppercase text-sm truncate">
+            <span className="font-black text-black uppercase text-sm tracking-wide">
               {cliente.nombre || 'CLIENTE MOSTRADOR'}
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 border-b border-slate-900 p-1.5">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-800 text-[11px] whitespace-nowrap">
+        <div className="border-b border-slate-900 py-2.5 px-3 min-h-[36px] flex items-center">
+          <div className="flex items-center gap-2 w-full leading-normal">
+            <span className="font-bold text-slate-900 text-xs whitespace-nowrap flex-shrink-0">
               Domicilio Fiscal:
             </span>
-            <span className="font-medium text-slate-900 uppercase truncate">
+            <span className="font-bold text-black uppercase text-xs tracking-wide">
               {cliente.direccion || 'Charallave, Edo. Miranda'}
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-12 divide-x border-slate-900">
-          <div className="col-span-4 p-1.5 flex items-center gap-1.5">
-            <span className="font-bold text-slate-800 text-[11px]">R.I.F. / C.I.:</span>
-            <span className="font-mono font-black text-slate-950 text-sm">
+        <div className="grid grid-cols-12 divide-x divide-slate-900">
+          <div className="col-span-4 py-2 px-3 flex items-center gap-2 min-h-[34px]">
+            <span className="font-bold text-slate-900 text-xs whitespace-nowrap flex-shrink-0">R.I.F. / C.I.:</span>
+            <span className="font-mono font-black text-black text-sm tracking-wider">
               {cliente.documento || 'V-00000000'}
             </span>
           </div>
 
-          <div className="col-span-4 p-1.5 flex items-center gap-1.5">
-            <span className="font-bold text-slate-800 text-[11px]">Telf.:</span>
-            <span className="font-medium text-slate-900">
+          <div className="col-span-4 py-2 px-3 flex items-center gap-2 min-h-[34px]">
+            <span className="font-bold text-slate-900 text-xs whitespace-nowrap flex-shrink-0">Telf.:</span>
+            <span className="font-bold text-black text-xs">
               {cliente.telefono || 'N/A'}
             </span>
           </div>
 
-          <div className="col-span-4 p-1.5 flex items-center justify-between text-[11px]">
-            <span className="font-bold text-slate-800">Condiciones de Pago:</span>
-            <div className="flex items-center gap-3 font-bold">
+          <div className="col-span-4 py-2 px-3 flex items-center justify-between text-xs min-h-[34px]">
+            <span className="font-bold text-slate-900 whitespace-nowrap">Condiciones de Pago:</span>
+            <div className="flex items-center gap-3 font-bold text-black">
               <label className="flex items-center gap-1">
                 <input 
                   type="checkbox" 
@@ -282,21 +282,6 @@ export default function GuiaImprimible({
               {formatVES(totals.totalBs)}
             </span>
           </div>
-        </div>
-      </div>
-
-      {/* 5. Pie de Imprenta Legal SENIAT (Copia Fiel del Talonario Físico) */}
-      <div className="border-t border-slate-300 mt-4 pt-2 text-[8.5px] leading-tight text-slate-600 space-y-1">
-        <p className="text-center sm:text-left">
-          <strong>Impreso por:</strong> TIP SANTA TERESA, C.A., RIF: J-31374511-1, Autorizado por La Providencia Nro. 592: SENIAT/01/00756 de Fecha: 22/04/2008
-        </p>
-        <p className="text-center sm:text-left">
-          Correspondiente al Talonario de <strong>FACTURA:</strong> Nro. de Control desde el <strong>00-000401</strong> hasta el <strong>00-000500</strong> Impresas el 26/05/2026 REGIÓN CAPITAL
-        </p>
-        <div className="flex flex-col sm:flex-row justify-between items-center pt-1 font-bold text-slate-800 text-[9px]">
-          <span>ESTA FACTURA VA SIN TACHADURAS NI ENMIENDADURAS</span>
-          <span className="border border-slate-400 px-2 py-0.5 rounded tracking-widest uppercase">ORIGINAL</span>
-          <span>SOLO EL ORIGINAL DA DERECHO A CRÉDITO FISCAL</span>
         </div>
       </div>
     </div>

@@ -33,7 +33,7 @@ export default function App() {
   const [condicionPago, setCondicionPago] = useState('CONTADO');
   const [formaPago, setFormaPago] = useState('PUNTO');
   const [monedaIngreso, setMonedaIngreso] = useState('VES');
-  const [proximoCorrelativo, setProximoCorrelativo] = useState('000475');
+  const [proximoCorrelativo, setProximoCorrelativo] = useState('000001');
 
   // Estados de control de UI
   const [loading, setLoading] = useState(false);
@@ -41,23 +41,43 @@ export default function App() {
   const [successNotif, setSuccessNotif] = useState(null);
   const [vistaImpresion, setVistaImpresion] = useState(null);
 
-  // Consultar próximo correlativo (inicia en 000475 si la base de datos está vacía)
-  const consultarProximoCorrelativo = async () => {
+  // Obtener el siguiente número correlativo disponible (reutiliza huecos si se eliminó una factura previa)
+  const obtenerSiguienteNumeroGuia = async () => {
     try {
       const { data, error } = await supabase
         .from('guias_despacho')
         .select('numero_guia')
-        .order('numero_guia', { ascending: false })
-        .limit(1);
+        .order('numero_guia', { ascending: true });
 
-      if (data && data.length > 0 && data[0].numero_guia) {
-        const next = data[0].numero_guia + 1;
-        setProximoCorrelativo(String(next).padStart(6, '0'));
-      } else {
-        setProximoCorrelativo('000475');
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        return 1;
       }
+
+      const numeros = data.map(d => d.numero_guia).filter(n => typeof n === 'number' && n > 0);
+      if (numeros.length === 0) return 1;
+
+      // Buscar el primer número disponible consecutivo (desde 1 en adelante)
+      const setNumeros = new Set(numeros);
+      let candidato = 1;
+      while (setNumeros.has(candidato)) {
+        candidato++;
+      }
+      return candidato;
+    } catch (err) {
+      console.error('Error al obtener siguiente número de guía:', err);
+      return 1;
+    }
+  };
+
+  // Consultar próximo correlativo para mostrar en la interfaz
+  const consultarProximoCorrelativo = async () => {
+    try {
+      const siguiente = await obtenerSiguienteNumeroGuia();
+      setProximoCorrelativo(String(siguiente).padStart(6, '0'));
     } catch (err) {
       console.error('Error al consultar correlativo:', err);
+      setProximoCorrelativo('000001');
     }
   };
 
@@ -115,6 +135,7 @@ export default function App() {
     setMonedaIngreso('VES');
     setError(null);
     setVistaImpresion(null);
+    consultarProximoCorrelativo();
   };
 
   // Guardar en Supabase (requiere usuario autenticado por las políticas RLS)
@@ -146,8 +167,12 @@ export default function App() {
     setError(null);
 
     try {
-      // 1. Guardar cabecera de la factura / guía
+      // 1. Obtener número correlativo consecutivo (reutiliza huecos si hubo eliminaciones)
+      const siguienteNumero = await obtenerSiguienteNumeroGuia();
+
+      // Guardar cabecera de la factura / guía
       let insertPayload = {
+        numero_guia: siguienteNumero,
         cliente_nombre: cliente.nombre.trim(),
         cliente_documento: cliente.documento.trim(),
         cliente_telefono: cliente.telefono.trim() || null,
@@ -450,7 +475,10 @@ export default function App() {
         ) : vista === 'historial' ? (
           /* Modo Historial de Guías Completo con Paginación */
           <HistorialPage
-            onVolverAlFacturador={() => setVista('facturador')}
+            onVolverAlFacturador={() => {
+              setVista('facturador');
+              consultarProximoCorrelativo();
+            }}
             onVerGuia={handleSelectHistorial}
           />
         ) : (

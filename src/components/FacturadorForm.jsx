@@ -42,7 +42,7 @@ export default function FacturadorForm({
   setFormaPago,
   monedaIngreso = 'VES',
   setMonedaIngreso,
-  proximoCorrelativo = '000475',
+  proximoCorrelativo = '000001',
   totals,
   onGuardar,
   onImprimir,

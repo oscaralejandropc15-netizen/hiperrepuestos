@@ -252,7 +252,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                 setBusqueda(e.target.value);
                 setPaginaActual(1);
               }}
-              placeholder="Buscar por número de factura (ej: 000474), cliente o cédula/RIF..."
+              placeholder="Buscar por número de factura (ej: 000001), cliente o cédula/RIF..."
               className="w-full input-cockpit rounded-2xl pl-11 pr-4 py-2.5 text-base sm:text-sm text-white placeholder:text-slate-500 min-h-[46px]"
             />
           </div>
