@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatUSD, formatVES, formatNumber } from '../lib/formatters';
+import { formatUSD, formatVES, formatNumber, parseVenezuelanNumber } from '../lib/formatters';
 
 export default function GuiaImprimible({
   codigoGuia = 'GD-000474',
@@ -24,8 +24,8 @@ export default function GuiaImprimible({
   return (
     <div 
       id="guia-imprimible" 
-      className="bg-white text-black p-8 font-sans w-full max-w-[820px] mx-auto border-2 border-slate-900 rounded-lg shadow-sm print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full"
-      style={{ minHeight: '1080px' }}
+      className="bg-white text-black p-5 font-sans w-full max-w-[800px] mx-auto border-2 border-slate-900 rounded-lg shadow-sm print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full"
+      style={{ boxSizing: 'border-box', pageBreakInside: 'avoid', breakInside: 'avoid' }}
     >
       {/* 1. Encabezado Oficial Familycar */}
       <div className="flex justify-between items-start border-b-2 border-slate-900 pb-3 mb-3">
@@ -162,16 +162,17 @@ export default function GuiaImprimible({
         <tbody className="divide-y divide-slate-300">
           {items.map((item, idx) => {
             const qty = parseFloat(item.cantidad) || 0;
-            const rate = parseFloat(tasaBCV) || 1;
+            const rateClean = parseVenezuelanNumber(tasaBCV);
+            const rate = rateClean > 0 ? rateClean : 1;
 
             let priceUSD = 0;
             let priceBs = 0;
 
             if (item.precio_bs !== undefined && item.precio_bs !== '') {
-              priceBs = parseFloat(item.precio_bs) || 0;
+              priceBs = parseVenezuelanNumber(item.precio_bs);
               priceUSD = rate > 0 ? priceBs / rate : 0;
             } else {
-              priceUSD = parseFloat(item.precio) || 0;
+              priceUSD = parseVenezuelanNumber(item.precio);
               priceBs = priceUSD * rate;
             }
 
@@ -197,12 +198,12 @@ export default function GuiaImprimible({
           })}
 
           {/* Renglones vacíos simulados para emular el talonario oficial si hay pocos ítems */}
-          {items.length < 5 && Array.from({ length: 5 - items.length }).map((_, i) => (
+          {items.length < 2 && Array.from({ length: 2 - items.length }).map((_, i) => (
             <tr key={`empty-${i}`} className="border-b border-slate-200 text-slate-200">
-              <td className="py-3 border-r border-slate-900 text-center">-</td>
-              <td className="py-3 border-r border-slate-900 px-3"></td>
-              <td className="py-3 border-r border-slate-900 text-right px-3"></td>
-              <td className="py-3 text-right px-3"></td>
+              <td className="py-2 border-r border-slate-900 text-center">-</td>
+              <td className="py-2 border-r border-slate-900 px-3"></td>
+              <td className="py-2 border-r border-slate-900 text-right px-3"></td>
+              <td className="py-2 text-right px-3"></td>
             </tr>
           ))}
         </tbody>
@@ -272,14 +273,14 @@ export default function GuiaImprimible({
           <div className="flex justify-between text-slate-800 text-[11px]">
             <span className="font-semibold">Base Imponible Bs.:</span>
             <span className="font-mono font-bold text-slate-950">
-              {formatVES(totals.baseImponible * (parseFloat(tasaBCV) || 1))}
+              {formatVES(totals.baseImponibleBs ?? (totals.baseImponible * (parseVenezuelanNumber(tasaBCV) || 1)))}
             </span>
           </div>
 
           <div className="flex justify-between text-slate-800 text-[11px]">
             <span className="font-semibold">I.V.A. 16% Sobre Bs.:</span>
             <span className="font-mono font-bold text-slate-950">
-              {formatVES(totals.iva * (parseFloat(tasaBCV) || 1))}
+              {formatVES(totals.ivaBs ?? (totals.iva * (parseVenezuelanNumber(tasaBCV) || 1)))}
             </span>
           </div>
 

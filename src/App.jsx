@@ -235,11 +235,12 @@ export default function App() {
     if (!element) return;
 
     const opt = {
-      margin: [6, 6, 6, 6],
+      margin: [5, 5, 5, 5],
       filename: `${codigo || 'Factura'}_Familycar.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     html2pdf().set(opt).from(element).save();
@@ -290,7 +291,9 @@ export default function App() {
       tasaBCV: guia.tasa_bcv,
       totals: {
         baseImponible: guia.subtotal_usd,
+        baseImponibleBs: Math.round(guia.subtotal_usd * (guia.tasa_bcv || 1) * 100) / 100,
         iva: guia.iva_usd,
+        ivaBs: Math.round(guia.iva_usd * (guia.tasa_bcv || 1) * 100) / 100,
         totalUSD: guia.total_usd,
         totalBs: guia.total_bs,
       },
