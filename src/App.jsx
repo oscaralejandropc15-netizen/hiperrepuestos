@@ -312,66 +312,72 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Barra de Encabezado Superior Responsiva */}
-      <header className="no-print bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
-            <img
-              src="/logo.png"
-              alt="Logo Familycar"
-              className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-full border border-slate-700 shadow-sm flex-shrink-0"
-            />
+    <div className="min-h-screen bg-[#06080F] text-slate-100 flex flex-col font-sans">
+      {/* Barra de Encabezado Superior Responsiva con Glassmorphism */}
+      <header className="no-print bg-[#0B0F19]/85 backdrop-blur-xl border-b border-white/[0.08] sticky top-0 z-40 shadow-xl shadow-black/40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 to-rose-600 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-300"></div>
+              <img
+                src="/logo.png"
+                alt="Logo Familycar"
+                className="relative w-9 h-9 sm:w-11 sm:h-11 object-contain rounded-full border border-white/20 bg-slate-950 shadow-md flex-shrink-0"
+              />
+            </div>
             <div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-xs sm:text-base font-black tracking-tight text-white leading-tight">
+              <div className="flex items-center gap-2">
+                <span className="text-sm sm:text-lg font-black tracking-wider text-white font-heading uppercase">
                   FAMILYCAR
                 </span>
-                <span className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0.5 bg-red-600/15 text-red-400 border border-red-500/30 rounded font-bold uppercase tracking-wider">
+                <span className="text-[10px] font-mono px-2 py-0.5 bg-gradient-to-r from-red-500/20 to-rose-500/20 text-rose-300 border border-red-500/40 rounded-full font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.15)]">
                   Mostrador
                 </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 font-mono hidden xs:block">
-                RIF: J-412654489 • Charallave
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-mono hidden xs:block tracking-wide">
+                RIF: J-412654489 • Charallave, Miranda
               </p>
             </div>
           </div>
 
-          {/* Pestañas de Navegación Rápida */}
-          <div className="flex items-center gap-1 sm:gap-2">
-            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+          {/* Pestañas de Navegación Rápida con Estilo Cockpit */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex bg-[#06080F]/90 p-1 rounded-2xl border border-white/[0.08] shadow-inner">
               <button
                 type="button"
                 onClick={() => { setVista('facturador'); setVistaImpresion(null); }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all min-h-[36px] ${
+                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 min-h-[38px] ${
                   vista === 'facturador' && !vistaImpresion
-                    ? 'bg-red-600 text-white shadow-md shadow-red-950/40'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-900/50 scale-[1.02]'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                 }`}
               >
                 <Receipt className="w-3.5 h-3.5" />
-                <span>Facturador</span>
+                <span className="tracking-wide">Facturador</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => { setVista('historial'); setVistaImpresion(null); }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all min-h-[36px] ${
+                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 min-h-[38px] ${
                   vista === 'historial' && !vistaImpresion
-                    ? 'bg-red-600 text-white shadow-md shadow-red-950/40'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-900/50 scale-[1.02]'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                 }`}
               >
                 <History className="w-3.5 h-3.5" />
-                <span>Historial</span>
+                <span className="tracking-wide">Historial</span>
               </button>
             </div>
 
-            <div className="hidden sm:block h-5 w-px bg-slate-800" />
+            <div className="hidden sm:block h-6 w-px bg-white/[0.08]" />
 
-            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-slate-950 border border-slate-800 rounded-xl">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span className="text-xs font-mono text-slate-300 truncate max-w-[140px]">
+            <div className="hidden md:flex items-center gap-2.5 px-3 py-1.5 bg-[#06080F]/80 border border-white/[0.08] rounded-2xl shadow-inner">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs font-mono text-slate-300 truncate max-w-[150px]">
                 {session?.user?.email || 'Vendedor'}
               </span>
             </div>
@@ -379,7 +385,7 @@ export default function App() {
             <button
               onClick={() => supabase.auth.signOut()}
               title="Cerrar Sesión"
-              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors active:scale-95 min-h-[38px] min-w-[38px] flex items-center justify-center"
+              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-2xl transition-all duration-200 active:scale-95 min-h-[40px] min-w-[40px] flex items-center justify-center cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -389,8 +395,8 @@ export default function App() {
 
       {/* Notificación de Éxito Flotante */}
       {successNotif && (
-        <div className="no-print fixed bottom-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 text-sm font-semibold animate-bounce max-w-[90vw]">
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+        <div className="no-print fixed bottom-6 right-6 z-50 bg-[#0B1A14]/90 border border-emerald-500/50 backdrop-blur-xl text-emerald-300 px-5 py-3.5 rounded-2xl shadow-2xl shadow-emerald-950/60 flex items-center gap-3 text-sm font-semibold animate-slide-up max-w-[90vw]">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
           <span className="truncate">{successNotif}</span>
         </div>
       )}
