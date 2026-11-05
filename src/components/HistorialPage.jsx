@@ -67,24 +67,43 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
   const confirmarEliminacion = async () => {
     if (!guiaAEliminar) return;
     setEliminando(true);
+    setError(null);
 
     try {
-      // Eliminar en Supabase (la tabla items_guia tiene on delete cascade)
-      const { error } = await supabase
+      // 1. Eliminar primero los ítems asociados en items_guia
+      const { error: itemsErr } = await supabase
+        .from('items_guia')
+        .delete()
+        .eq('guia_id', guiaAEliminar.id);
+
+      if (itemsErr) {
+        console.warn('Aviso al eliminar renglones:', itemsErr);
+      }
+
+      // 2. Eliminar la cabecera en guias_despacho y verificar retorno con .select()
+      const { data, error: guiaErr } = await supabase
         .from('guias_despacho')
         .delete()
-        .eq('id', guiaAEliminar.id);
+        .eq('id', guiaAEliminar.id)
+        .select();
 
-      if (error) throw error;
+      if (guiaErr) throw guiaErr;
 
-      // Actualizar estado local
+      // 3. Si PostgreSQL no devolvió ninguna fila eliminada (bloqueado por políticas RLS)
+      if (!data || data.length === 0) {
+        throw new Error(
+          'Supabase no eliminó la factura (0 filas afectadas). Esto ocurre porque falta la política RLS de DELETE en Supabase.'
+        );
+      }
+
+      // 4. Actualizar estado local solo si la base de datos realmente la eliminó
       setGuias(prev => prev.filter(g => g.id !== guiaAEliminar.id));
-      setSuccessMsg(`La guía ${guiaAEliminar.codigo_guia} fue eliminada correctamente.`);
+      setSuccessMsg(`La factura ${guiaAEliminar.codigo_guia} fue eliminada permanentemente.`);
       setTimeout(() => setSuccessMsg(null), 4000);
       setGuiaAEliminar(null);
     } catch (err) {
-      console.error(err);
-      setError(err.message || 'No se pudo eliminar la guía. Verifica tus permisos RLS.');
+      console.error('Error al eliminar factura:', err);
+      setError(err.message || 'No se pudo eliminar la guía. Verifica tus permisos RLS en Supabase.');
     } finally {
       setEliminando(false);
     }
@@ -339,7 +358,10 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                         </button>
 
                         <button
-                          onClick={() => setGuiaAEliminar(guia)}
+                          onClick={() => {
+                            setGuiaAEliminar(guia);
+                            setError(null);
+                          }}
                           title="Eliminar guía"
                           className="p-2 bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/[0.08] hover:border-rose-500/30 rounded-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
                         >
@@ -420,10 +442,20 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
               <p><strong>Monto Total:</strong> {formatUSD(guiaAEliminar.total_usd)} ({formatVES(guiaAEliminar.total_bs)})</p>
             </div>
 
+            {error && (
+              <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-2xl text-rose-300 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                <span className="leading-relaxed font-medium">{error}</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setGuiaAEliminar(null)}
+                onClick={() => {
+                  setGuiaAEliminar(null);
+                  setError(null);
+                }}
                 className="px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 rounded-2xl text-xs font-bold transition-colors cursor-pointer"
               >
                 Cancelar
