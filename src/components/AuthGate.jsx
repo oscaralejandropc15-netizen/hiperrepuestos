@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import FamilycarLogo from './FamilycarLogo';
+import RacingCarsBackground from './RacingCarsBackground';
 import { 
   Mail, 
   Key, 
@@ -41,10 +42,8 @@ export default function AuthGate({ onAuthSuccess }) {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4 bg-slate-950 font-sans">
-      {/* Luces y Resplandor Neón de Fondo */}
-      <div className="absolute top-1/4 -left-36 w-96 h-96 bg-red-600/20 rounded-full blur-3xl pointer-events-none animate-glow"></div>
-      <div className="absolute bottom-1/4 -right-36 w-96 h-96 bg-rose-700/20 rounded-full blur-3xl pointer-events-none animate-glow" style={{ animationDelay: '3s' }}></div>
-      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-35 pointer-events-none"></div>
+      {/* Animación moderna de carros corriendo en el fondo */}
+      <RacingCarsBackground />
 
       {/* Tarjeta Principal Glassmorphic */}
       <div className="relative w-full max-w-md bg-slate-900/90 backdrop-blur-2xl border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-red-950/30 z-10">

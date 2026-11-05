@@ -31,7 +31,8 @@ export default function App() {
   ]);
   const [observaciones, setObservaciones] = useState('');
   const [condicionPago, setCondicionPago] = useState('CONTADO');
-  const [formaPago, setFormaPago] = useState('DIVISA');
+  const [formaPago, setFormaPago] = useState('PUNTO');
+  const [monedaIngreso, setMonedaIngreso] = useState('VES');
   const [proximoCorrelativo, setProximoCorrelativo] = useState('000475');
 
   // Estados de control de UI
@@ -101,16 +102,17 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Totales reactivos en tiempo real
-  const totals = calculateTotals(items, tasaBCV);
+  // Totales reactivos en tiempo real con soporte para cobro en Bs. o en $
+  const totals = calculateTotals(items, tasaBCV, monedaIngreso);
 
   // Limpiar y resetear el formulario
   const handleLimpiar = () => {
     setCliente({ nombre: '', documento: '', telefono: '', direccion: '' });
-    setItems([{ id: Date.now(), cantidad: 1, descripcion: '', precio: '' }]);
+    setItems([{ id: Date.now(), cantidad: 1, descripcion: '', precio: '', precio_bs: '' }]);
     setObservaciones('');
     setCondicionPago('CONTADO');
-    setFormaPago('DIVISA');
+    setFormaPago('PUNTO');
+    setMonedaIngreso('VES');
     setError(null);
     setVistaImpresion(null);
   };
@@ -122,9 +124,15 @@ export default function App() {
       return null;
     }
 
-    const itemsValidos = items.filter(
-      (it) => it.descripcion.trim() && parseFloat(it.cantidad) > 0 && parseFloat(it.precio) >= 0
-    );
+    const rate = parseFloat(tasaBCV) || 1;
+    const itemsValidos = items.filter((it) => {
+      const hasDesc = it.descripcion && it.descripcion.trim().length > 0;
+      const hasQty = parseFloat(it.cantidad) > 0;
+      const hasPrice = (monedaIngreso === 'VES' 
+        ? (parseFloat(it.precio_bs) >= 0 || parseFloat(it.precio) >= 0)
+        : (parseFloat(it.precio) >= 0 || parseFloat(it.precio_bs) >= 0));
+      return hasDesc && hasQty && hasPrice;
+    });
 
     if (itemsValidos.length === 0) {
       setError('Debes agregar al menos un repuesto con cantidad y precio válido.');
@@ -172,14 +180,24 @@ export default function App() {
 
       if (guiaError) throw guiaError;
 
-      // 2. Guardar renglones de la guía
-      const renglones = itemsValidos.map((it) => ({
-        guia_id: guiaData.id,
-        cantidad: parseFloat(it.cantidad),
-        descripcion: it.descripcion.trim(),
-        precio_unitario_usd: parseFloat(it.precio),
-        subtotal_usd: parseFloat(it.cantidad) * parseFloat(it.precio),
-      }));
+      // 2. Guardar renglones de la guía con conversión precisa
+      const renglones = itemsValidos.map((it) => {
+        let priceUSD = 0;
+        if (monedaIngreso === 'VES') {
+          const bs = parseFloat(it.precio_bs) || 0;
+          priceUSD = rate > 0 ? bs / rate : 0;
+        } else {
+          priceUSD = parseFloat(it.precio) || 0;
+        }
+
+        return {
+          guia_id: guiaData.id,
+          cantidad: parseFloat(it.cantidad),
+          descripcion: it.descripcion.trim(),
+          precio_unitario_usd: priceUSD,
+          subtotal_usd: parseFloat(it.cantidad) * priceUSD,
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('items_guia')
@@ -441,6 +459,8 @@ export default function App() {
             setCondicionPago={setCondicionPago}
             formaPago={formaPago}
             setFormaPago={setFormaPago}
+            monedaIngreso={monedaIngreso}
+            setMonedaIngreso={setMonedaIngreso}
             proximoCorrelativo={proximoCorrelativo}
             totals={totals}
             onGuardar={handleGuardar}

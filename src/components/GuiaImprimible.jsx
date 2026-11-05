@@ -162,12 +162,21 @@ export default function GuiaImprimible({
         <tbody className="divide-y divide-slate-300">
           {items.map((item, idx) => {
             const qty = parseFloat(item.cantidad) || 0;
-            const priceUSD = parseFloat(item.precio) || 0;
-            const subUSD = qty * priceUSD;
+            const rate = parseFloat(tasaBCV) || 1;
 
-            // Precio en Bolívares conforme al talonario físico
-            const priceBs = priceUSD * (parseFloat(tasaBCV) || 1);
-            const subBs = subUSD * (parseFloat(tasaBCV) || 1);
+            let priceUSD = 0;
+            let priceBs = 0;
+
+            if (item.precio_bs !== undefined && item.precio_bs !== '') {
+              priceBs = parseFloat(item.precio_bs) || 0;
+              priceUSD = rate > 0 ? priceBs / rate : 0;
+            } else {
+              priceUSD = parseFloat(item.precio) || 0;
+              priceBs = priceUSD * rate;
+            }
+
+            const subUSD = qty * priceUSD;
+            const subBs = qty * priceBs;
 
             return (
               <tr key={idx} className="border-b border-slate-300">
@@ -229,8 +238,15 @@ export default function GuiaImprimible({
               <span>BIOPAGO</span>
             </label>
             <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={formaPago === 'DIVISA'} readOnly className="rounded" />
-              <span className="text-red-700 font-black">$ (DIVISA)</span>
+              <input 
+                type="checkbox" 
+                checked={['DIVISA', 'ZELLE', 'BINANCE'].includes(formaPago)} 
+                readOnly 
+                className="rounded" 
+              />
+              <span className="text-red-700 font-black">
+                {formaPago === 'ZELLE' ? '$ (ZELLE)' : formaPago === 'BINANCE' ? '$ (BINANCE)' : '$ (DIVISA)'}
+              </span>
             </label>
           </div>
           <div className="text-[10px] text-slate-500 border-t border-slate-300 pt-1 mt-2">

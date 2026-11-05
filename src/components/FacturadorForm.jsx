@@ -27,8 +27,10 @@ export default function FacturadorForm({
   setObservaciones,
   condicionPago = 'CONTADO',
   setCondicionPago,
-  formaPago = 'DIVISA',
+  formaPago = 'PUNTO',
   setFormaPago,
+  monedaIngreso = 'VES',
+  setMonedaIngreso,
   proximoCorrelativo = '000475',
   totals,
   onGuardar,
@@ -86,6 +88,30 @@ export default function FacturadorForm({
       next[index] = { ...next[index], [field]: value };
       return next;
     });
+  };
+
+  // Manejador de precios reactivo según la moneda activa (Bs. o $)
+  const handlePrecioChange = (index, value) => {
+    const rate = parseFloat(tasaBCV) || 1;
+    setItems(prev => {
+      const next = [...prev];
+      const item = { ...next[index] };
+      if (monedaIngreso === 'VES') {
+        item.precio_bs = value;
+        item.precio = value && rate > 0 ? (parseFloat(value) / rate).toFixed(4) : '';
+      } else {
+        item.precio = value;
+        item.precio_bs = value && rate > 0 ? (parseFloat(value) * rate).toFixed(2) : '';
+      }
+      next[index] = item;
+      return next;
+    });
+  };
+
+  // Cambiar forma de pago y auto-sincronizar la moneda de cobro
+  const seleccionarFormaPago = (fId, monedaDefault) => {
+    if (setFormaPago) setFormaPago(fId);
+    if (setMonedaIngreso && monedaDefault) setMonedaIngreso(monedaDefault);
   };
 
   const agregarItem = () => {
@@ -304,25 +330,39 @@ export default function FacturadorForm({
           </div>
 
           <div className="sm:col-span-2 lg:col-span-2">
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
-              Forma de Pago
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-300">
+                Forma de Pago
+              </label>
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                monedaIngreso === 'VES' 
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' 
+                  : 'bg-red-500/15 text-red-400 border-red-500/30'
+              }`}>
+                Cobro en {monedaIngreso === 'VES' ? 'Bolívares (Bs.)' : 'Dólares ($)'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {[
-                { id: 'DIVISA', label: '$ Divisas' },
-                { id: 'PUNTO', label: 'Débito' },
-                { id: 'PAGO_MOVIL', label: 'P. Móvil' },
-                { id: 'EFECTIVO', label: 'Efectivo Bs' },
-                { id: 'TRANSFERENCIA', label: 'Transf.' },
-                { id: 'BIOPAGO', label: 'Biopago' }
+                { id: 'PUNTO', label: 'Débito', moneda: 'VES' },
+                { id: 'PAGO_MOVIL', label: 'P. Móvil', moneda: 'VES' },
+                { id: 'EFECTIVO', label: 'Efectivo Bs', moneda: 'VES' },
+                { id: 'TRANSFERENCIA', label: 'Transf. Bs', moneda: 'VES' },
+                { id: 'BIOPAGO', label: 'Biopago', moneda: 'VES' },
+                { id: 'DIVISA', label: '$ Divisas', moneda: 'USD' },
+                { id: 'ZELLE', label: 'Zelle ($)', moneda: 'USD' },
+                { id: 'BINANCE', label: 'Binance ($)', moneda: 'USD' },
               ].map(f => (
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => setFormaPago && setFormaPago(f.id)}
+                  onClick={() => seleccionarFormaPago(f.id, f.moneda)}
                   className={`py-2 px-1 rounded-xl text-[11px] font-bold transition-all border min-h-[42px] truncate ${
                     formaPago === f.id
-                      ? 'bg-red-600 text-white border-red-500 shadow-sm'
+                      ? f.moneda === 'VES'
+                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-950/40'
+                        : 'bg-red-600 text-white border-red-500 shadow-md shadow-red-950/40'
                       : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-900'
                   }`}
                 >
@@ -336,21 +376,51 @@ export default function FacturadorForm({
 
       {/* 3. Detalle de Repuestos / Renglones */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Receipt className="w-4 h-4 text-red-500" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
               Renglones de la Guía ({items.length})
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={agregarItem}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-red-950/40 transition-all hover:scale-[1.02] active:scale-95 min-h-[40px]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Agregar Renglón</span>
-          </button>
+
+          <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
+            {/* Selector de Moneda de Ingreso */}
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 px-2 uppercase">Precios en:</span>
+              <button
+                type="button"
+                onClick={() => setMonedaIngreso && setMonedaIngreso('VES')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  monedaIngreso === 'VES'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Bs. Bolívares
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonedaIngreso && setMonedaIngreso('USD')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  monedaIngreso === 'USD'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                $ Dólares
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={agregarItem}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-red-950/40 transition-all hover:scale-[1.02] active:scale-95 min-h-[40px]"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Agregar Renglón</span>
+            </button>
+          </div>
         </div>
 
         {/* VISTA 1: TABLA PARA TABLETS Y COMPUTADORAS (md en adelante) */}
@@ -361,14 +431,41 @@ export default function FacturadorForm({
                 <th className="py-2.5 px-3 w-12 text-center rounded-l-lg">#</th>
                 <th className="py-2.5 px-2 w-28 text-center">Cant.</th>
                 <th className="py-2.5 px-4">Descripción del Repuesto</th>
-                <th className="py-2.5 px-3 w-36 text-right">P. Unit ($)</th>
-                <th className="py-2.5 px-4 w-36 text-right">Subtotal ($)</th>
+                <th className="py-2.5 px-3 w-44 text-right">
+                  {monedaIngreso === 'VES' ? (
+                    <span className="text-emerald-400 font-black">P. Unit (Bs.)</span>
+                  ) : (
+                    <span className="text-red-400 font-black">P. Unit ($)</span>
+                  )}
+                </th>
+                <th className="py-2.5 px-4 w-44 text-right">
+                  {monedaIngreso === 'VES' ? (
+                    <span className="text-emerald-400 font-black">Subtotal (Bs.)</span>
+                  ) : (
+                    <span className="text-red-400 font-black">Subtotal ($)</span>
+                  )}
+                </th>
                 <th className="py-2.5 px-3 w-12 text-center rounded-r-lg"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {items.map((item, index) => {
-                const subtotalItem = (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0);
+                const qty = parseFloat(item.cantidad) || 0;
+                const rate = parseFloat(tasaBCV) || 1;
+
+                let unitPriceUSD = 0;
+                let unitPriceBs = 0;
+
+                if (monedaIngreso === 'VES') {
+                  unitPriceBs = parseFloat(item.precio_bs) || 0;
+                  unitPriceUSD = rate > 0 ? unitPriceBs / rate : 0;
+                } else {
+                  unitPriceUSD = parseFloat(item.precio) || 0;
+                  unitPriceBs = unitPriceUSD * rate;
+                }
+
+                const subtotalUSD = qty * unitPriceUSD;
+                const subtotalBs = qty * unitPriceBs;
 
                 return (
                   <tr key={item.id || index} className="group hover:bg-slate-800/40 transition-colors">
@@ -402,22 +499,34 @@ export default function FacturadorForm({
 
                     <td className="py-2 px-3">
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-400">
+                          {monedaIngreso === 'VES' ? 'Bs.' : '$'}
+                        </span>
                         <input
                           type="number"
                           step="0.01"
                           min="0"
-                          value={item.precio}
-                          onChange={(e) => handleItemChange(index, 'precio', e.target.value)}
+                          value={monedaIngreso === 'VES' ? (item.precio_bs ?? '') : (item.precio ?? '')}
+                          onChange={(e) => handlePrecioChange(index, e.target.value)}
                           onKeyDown={(e) => handleKeyDown(e, index)}
                           placeholder="0.00"
-                          className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-7 pr-3 py-2 text-sm text-right font-mono font-bold text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 shadow-inner"
+                          className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-sm text-right font-mono font-bold text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 shadow-inner"
                         />
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 text-right pr-1 pt-0.5">
+                        {monedaIngreso === 'VES'
+                          ? `≈ ${formatUSD(unitPriceUSD)}`
+                          : `≈ ${formatVES(unitPriceBs)}`}
                       </div>
                     </td>
 
-                    <td className="py-2.5 px-4 text-right font-mono text-sm font-black text-slate-100">
-                      {formatUSD(subtotalItem)}
+                    <td className="py-2.5 px-4 text-right font-mono">
+                      <div className="text-sm font-black text-slate-100">
+                        {monedaIngreso === 'VES' ? formatVES(subtotalBs) : formatUSD(subtotalUSD)}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {monedaIngreso === 'VES' ? `≈ ${formatUSD(subtotalUSD)}` : `≈ ${formatVES(subtotalBs)}`}
+                      </div>
                     </td>
 
                     <td className="py-2.5 px-3 text-center">
@@ -440,7 +549,22 @@ export default function FacturadorForm({
         {/* VISTA 2: TARJETAS MÓVILES PARA CELULARES (Menos de 768px) */}
         <div className="md:hidden space-y-3">
           {items.map((item, index) => {
-            const subtotalItem = (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0);
+            const qty = parseFloat(item.cantidad) || 0;
+            const rate = parseFloat(tasaBCV) || 1;
+
+            let unitPriceUSD = 0;
+            let unitPriceBs = 0;
+
+            if (monedaIngreso === 'VES') {
+              unitPriceBs = parseFloat(item.precio_bs) || 0;
+              unitPriceUSD = rate > 0 ? unitPriceBs / rate : 0;
+            } else {
+              unitPriceUSD = parseFloat(item.precio) || 0;
+              unitPriceBs = unitPriceUSD * rate;
+            }
+
+            const subtotalUSD = qty * unitPriceUSD;
+            const subtotalBs = qty * unitPriceBs;
 
             return (
               <div 
@@ -510,19 +634,26 @@ export default function FacturadorForm({
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                      Precio Unitario ($)
+                      {monedaIngreso === 'VES' ? 'Precio Unitario (Bs.)' : 'Precio Unitario ($)'}
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-400">
+                        {monedaIngreso === 'VES' ? 'Bs.' : '$'}
+                      </span>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
-                        value={item.precio}
-                        onChange={(e) => handleItemChange(index, 'precio', e.target.value)}
+                        value={monedaIngreso === 'VES' ? (item.precio_bs ?? '') : (item.precio ?? '')}
+                        onChange={(e) => handlePrecioChange(index, e.target.value)}
                         placeholder="0.00"
-                        className="w-full h-11 bg-slate-900 border border-slate-700/80 rounded-xl pl-7 pr-3 text-base text-right font-mono font-bold text-white focus:outline-none focus:border-red-500"
+                        className="w-full h-11 bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 text-base text-right font-mono font-bold text-white focus:outline-none focus:border-red-500"
                       />
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-400 text-right pr-1 pt-0.5">
+                      {monedaIngreso === 'VES'
+                        ? `≈ ${formatUSD(unitPriceUSD)}`
+                        : `≈ ${formatVES(unitPriceBs)}`}
                     </div>
                   </div>
                 </div>
@@ -530,9 +661,14 @@ export default function FacturadorForm({
                 {/* Subtotal del Renglón */}
                 <div className="flex items-center justify-between pt-1 text-xs">
                   <span className="text-slate-400">Subtotal del ítem:</span>
-                  <span className="font-mono font-black text-sm text-slate-100">
-                    {formatUSD(subtotalItem)}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-mono font-black text-sm text-slate-100 block">
+                      {monedaIngreso === 'VES' ? formatVES(subtotalBs) : formatUSD(subtotalUSD)}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {monedaIngreso === 'VES' ? `≈ ${formatUSD(subtotalUSD)}` : `≈ ${formatVES(subtotalBs)}`}
+                    </span>
+                  </div>
                 </div>
               </div>
             );

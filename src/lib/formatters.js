@@ -45,28 +45,49 @@ export function formatDate(dateString) {
 
 /**
  * Cálculos matemáticos de facturación con IVA del 16%
+ * Soporta ingreso tanto en Bolívares (VES) como en Dólares (USD)
  */
-export function calculateTotals(items = [], tasaBCV = 1) {
-  // Base Imponible: suma de (cantidad * precio_unitario)
-  const baseImponible = items.reduce((acc, item) => {
+export function calculateTotals(items = [], tasaBCV = 1, monedaIngreso = 'USD') {
+  const rate = parseFloat(tasaBCV) || 1;
+
+  let baseImponibleUSD = 0;
+  let baseImponibleBs = 0;
+
+  items.forEach((item) => {
     const qty = parseFloat(item.cantidad) || 0;
-    const price = parseFloat(item.precio) || 0;
-    return acc + (qty * price);
-  }, 0);
+    let priceUSD = 0;
+    let priceBs = 0;
 
-  // IVA 16%
-  const iva = baseImponible * 0.16;
+    if (monedaIngreso === 'VES') {
+      // Priorizar precio en Bolívares introducido directamente
+      if (item.precio_bs !== undefined && item.precio_bs !== '') {
+        priceBs = parseFloat(item.precio_bs) || 0;
+        priceUSD = rate > 0 ? priceBs / rate : 0;
+      } else {
+        priceUSD = parseFloat(item.precio) || 0;
+        priceBs = priceUSD * rate;
+      }
+    } else {
+      // Priorizar precio en Dólares ($)
+      priceUSD = parseFloat(item.precio) || 0;
+      priceBs = priceUSD * rate;
+    }
 
-  // Total USD
-  const totalUSD = baseImponible + iva;
+    baseImponibleUSD += qty * priceUSD;
+    baseImponibleBs += qty * priceBs;
+  });
 
-  // Total en Bolívares a tasa BCV
-  const rate = parseFloat(tasaBCV) || 0;
-  const totalBs = totalUSD * rate;
+  const ivaUSD = baseImponibleUSD * 0.16;
+  const ivaBs = baseImponibleBs * 0.16;
+
+  const totalUSD = baseImponibleUSD + ivaUSD;
+  const totalBs = baseImponibleBs + ivaBs;
 
   return {
-    baseImponible: Math.round(baseImponible * 100) / 100,
-    iva: Math.round(iva * 100) / 100,
+    baseImponible: Math.round(baseImponibleUSD * 100) / 100,
+    baseImponibleBs: Math.round(baseImponibleBs * 100) / 100,
+    iva: Math.round(ivaUSD * 100) / 100,
+    ivaBs: Math.round(ivaBs * 100) / 100,
     totalUSD: Math.round(totalUSD * 100) / 100,
     totalBs: Math.round(totalBs * 100) / 100,
   };
