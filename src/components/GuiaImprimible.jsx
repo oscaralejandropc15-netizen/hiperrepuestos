@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatUSD, formatVES, formatNumber, parseVenezuelanNumber } from '../lib/formatters';
+import { formatVES, formatNumber, parseVenezuelanNumber } from '../lib/formatters';
 
 export default function GuiaImprimible({
   codigoGuia = 'GD-000474',
@@ -176,7 +176,6 @@ export default function GuiaImprimible({
               priceBs = priceUSD * rate;
             }
 
-            const subUSD = qty * priceUSD;
             const subBs = qty * priceBs;
 
             return (
@@ -185,13 +184,11 @@ export default function GuiaImprimible({
                 <td className="py-2.5 px-3 border-r border-slate-900 uppercase font-medium">
                   {item.descripcion || '-'}
                 </td>
-                <td className="py-2.5 px-3 border-r border-slate-900 text-right font-mono">
-                  <div>{formatVES(priceBs)}</div>
-                  <div className="text-[10px] text-slate-500">{formatUSD(priceUSD)}</div>
+                <td className="py-2.5 px-3 border-r border-slate-900 text-right font-mono font-bold">
+                  {formatVES(priceBs)}
                 </td>
                 <td className="py-2.5 px-3 text-right font-mono font-black">
-                  <div>{formatVES(subBs)}</div>
-                  <div className="text-[10px] text-slate-500">{formatUSD(subUSD)}</div>
+                  {formatVES(subBs)}
                 </td>
               </tr>
             );
@@ -209,7 +206,7 @@ export default function GuiaImprimible({
         </tbody>
       </table>
 
-      {/* 4. Bloque Inferior: Formas de Pago, Recibí Conforme y Totales SENIAT */}
+      {/* 4. Bloque Inferior: Formas de Pago, Recibí Conforme y Totales SENIAT (Estrictamente en Bolívares) */}
       <div className="grid grid-cols-12 gap-3 items-stretch text-xs">
         
         {/* Forma de Pago */}
@@ -245,13 +242,8 @@ export default function GuiaImprimible({
                 readOnly 
                 className="rounded" 
               />
-              <span className="text-red-700 font-black">
-                {formaPago === 'ZELLE' ? '$ (ZELLE)' : formaPago === 'BINANCE' ? '$ (BINANCE)' : '$ (DIVISA)'}
-              </span>
+              <span>DIVISA</span>
             </label>
-          </div>
-          <div className="text-[10px] text-slate-500 border-t border-slate-300 pt-1 mt-2">
-            Tasa BCV: <strong>{formatNumber(tasaBCV, 2)} Bs/$</strong>
           </div>
         </div>
 
@@ -263,7 +255,7 @@ export default function GuiaImprimible({
           <p className="text-[9px] text-slate-500">Firma y Cédula del Cliente</p>
         </div>
 
-        {/* Desglose de Totales SENIAT (Exacto a la Factura Manual) */}
+        {/* Desglose de Totales SENIAT (Exacto a la Factura Manual en Bolívares) */}
         <div className="col-span-5 border-2 border-slate-900 rounded p-2.5 space-y-1 bg-slate-50">
           <div className="flex justify-between text-slate-700 text-[11px]">
             <span>Total Exento Bs.:</span>
@@ -289,12 +281,6 @@ export default function GuiaImprimible({
             <span className="font-mono font-black text-sm sm:text-base text-red-700">
               {formatVES(totals.totalBs)}
             </span>
-          </div>
-
-          {/* Equivalente en Divisas ($ USD) */}
-          <div className="border-t border-slate-300 pt-1 flex justify-between text-[11px] text-slate-700">
-            <span>Equivalente en Dólares ($):</span>
-            <span className="font-mono font-bold text-slate-900">{formatUSD(totals.totalUSD)}</span>
           </div>
         </div>
       </div>
