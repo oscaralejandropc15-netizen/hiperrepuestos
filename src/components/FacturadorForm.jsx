@@ -43,6 +43,8 @@ export default function FacturadorForm({
   monedaIngreso = 'VES',
   setMonedaIngreso,
   proximoCorrelativo = '000001',
+  numeroFacturaManual = '',
+  setNumeroFacturaManual,
   totals,
   onGuardar,
   onImprimir,
@@ -278,26 +280,26 @@ export default function FacturadorForm({
         </div>
       )}
 
-      {/* 1. Barra de Tasa BCV Oficial - Cockpit Telemetry Badge */}
+      {/* 1. Cockpit de Tasas de Cambio en Tiempo Real (BCV Dólar, Euro, Binance USDT, Paralelo) */}
       <div className="glass-card rounded-3xl p-4 sm:p-5 relative overflow-hidden group">
-        {/* Ambient glow sutil */}
         <div className="absolute top-0 right-0 w-64 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="relative flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500/15 to-teal-500/10 border border-emerald-500/30 rounded-2xl p-2 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.2)] flex-shrink-0 group-hover:scale-105 transition-all duration-200">
+        {/* Encabezado del Monitor de Tasas */}
+        <div className="relative flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-200 dark:border-white/[0.06]">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-2 flex items-center justify-center shadow-sm flex-shrink-0">
               <img
                 src="/bcv_logo.svg"
                 alt="Banco Central de Venezuela"
-                className="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]"
+                className="w-full h-full object-contain filter drop-shadow-sm"
               />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm sm:text-base font-extrabold text-white tracking-wide font-heading">
-                  TASA OFICIAL BCV
+                <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white tracking-wide font-heading">
+                  MONITOR DE TASAS DE CAMBIO
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-sm">
                   <span className="relative flex h-1.5 w-1.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
@@ -305,18 +307,18 @@ export default function FacturadorForm({
                   Al Día
                 </span>
               </div>
-              <p className="text-xs text-slate-400 tracking-wide mt-0.5">
-                Factor oficial para cálculo automático en Bolívares
+              <p className="text-xs text-slate-500 dark:text-slate-400 tracking-wide mt-0.5">
+                Tasas oficiales y de mercado para cálculo automático en Bolívares
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end bg-[#06080F]/80 p-2 sm:p-2.5 rounded-2xl border border-white/[0.06] shadow-inner">
-            <span className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2 font-mono">
-              1 USD =
+          {/* Tasa Activa para la Factura */}
+          <div className="flex items-center gap-2.5 bg-slate-100 dark:bg-[#06080F]/80 p-2 sm:p-2.5 rounded-2xl border border-slate-300 dark:border-white/[0.06] shadow-inner self-start md:self-auto">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2 font-mono">
+              Tasa Activa:
             </span>
-            
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input
                 type="text"
                 inputMode="decimal"
@@ -326,20 +328,111 @@ export default function FacturadorForm({
                   setTasaBCV(val);
                 }}
                 placeholder="0,00"
-                className="w-32 sm:w-36 bg-[#0B0F19] border border-white/[0.12] rounded-xl px-3 py-1.5 font-mono font-black text-white text-base focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-right shadow-inner transition-all duration-200"
+                className="w-28 sm:w-32 bg-white dark:bg-[#0B0F19] border border-slate-300 dark:border-white/[0.12] rounded-xl px-2.5 py-1 font-mono font-black text-slate-900 dark:text-white text-base focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-right shadow-inner"
               />
-              <span className="text-xs font-mono font-bold text-emerald-400 px-1">Bs.</span>
+              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 px-1">Bs.</span>
 
               <button
                 type="button"
                 onClick={onActualizarBCV}
                 disabled={cargandoBCV}
-                title="Actualizar tasa BCV en tiempo real"
-                className="p-2.5 min-h-[42px] min-w-[42px] flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] hover:border-emerald-500/40 rounded-xl transition-all duration-200 disabled:opacity-50 active:scale-95 cursor-pointer"
+                title="Actualizar todas las tasas en tiempo real"
+                className="p-2 min-h-[38px] min-w-[38px] flex items-center justify-center bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-white/[0.08] hover:border-emerald-500/40 rounded-xl transition-all duration-200 disabled:opacity-50 active:scale-95 cursor-pointer shadow-sm"
               >
-                <RotateCcw className={`w-4 h-4 ${cargandoBCV ? 'animate-spin text-emerald-400' : ''}`} />
+                <RotateCcw className={`w-4 h-4 ${cargandoBCV ? 'animate-spin text-emerald-500' : ''}`} />
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Cuadrícula de 4 Tasas: BCV USD, BCV Euro, Binance USDT, Dólar Paralelo */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          {/* 1. Dólar BCV Oficial */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#06080F]/90 border border-slate-200 dark:border-white/[0.08] flex flex-col justify-between group hover:border-emerald-500/40 transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                <span>🇺🇸</span> Dólar BCV ($)
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                Oficial
+              </span>
+            </div>
+            <div className="text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white my-1">
+              {formatNumber(bcvInfo?.usdOficial || tasaBCV, 2)} <span className="text-xs font-medium text-slate-500">Bs.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => bcvInfo?.usdOficial && setTasaBCV(bcvInfo.usdOficial)}
+              className="mt-1 w-full py-1.5 px-2 text-[11px] font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all cursor-pointer shadow-sm active:scale-95 text-center"
+            >
+              Usar para factura
+            </button>
+          </div>
+
+          {/* 2. Euro BCV Oficial */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#06080F]/90 border border-slate-200 dark:border-white/[0.08] flex flex-col justify-between group hover:border-blue-500/40 transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                <span>🇪🇺</span> Euro BCV (€)
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                Oficial
+              </span>
+            </div>
+            <div className="text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white my-1">
+              {formatNumber(bcvInfo?.eurOficial || '0', 2)} <span className="text-xs font-medium text-slate-500">Bs.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => bcvInfo?.eurOficial && setTasaBCV(bcvInfo.eurOficial)}
+              className="mt-1 w-full py-1.5 px-2 text-[11px] font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer shadow-sm active:scale-95 text-center"
+            >
+              Usar para factura
+            </button>
+          </div>
+
+          {/* 3. Binance P2P (USDT) */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#06080F]/90 border border-slate-200 dark:border-white/[0.08] flex flex-col justify-between group hover:border-amber-500/40 transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                <span className="text-amber-500">🪙</span> Binance P2P
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                USDT
+              </span>
+            </div>
+            <div className="text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white my-1">
+              {formatNumber(bcvInfo?.binanceUSDT || '0', 2)} <span className="text-xs font-medium text-slate-500">Bs.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => bcvInfo?.binanceUSDT && setTasaBCV(bcvInfo.binanceUSDT)}
+              className="mt-1 w-full py-1.5 px-2 text-[11px] font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-all cursor-pointer shadow-sm active:scale-95 text-center"
+            >
+              Usar para factura
+            </button>
+          </div>
+
+          {/* 4. Dólar Paralelo */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#06080F]/90 border border-slate-200 dark:border-white/[0.08] flex flex-col justify-between group hover:border-purple-500/40 transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                <span className="text-purple-500">📈</span> Dólar Paralelo
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                Monitor
+              </span>
+            </div>
+            <div className="text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white my-1">
+              {formatNumber(bcvInfo?.usdParalelo || '0', 2)} <span className="text-xs font-medium text-slate-500">Bs.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => bcvInfo?.usdParalelo && setTasaBCV(bcvInfo.usdParalelo)}
+              className="mt-1 w-full py-1.5 px-2 text-[11px] font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition-all cursor-pointer shadow-sm active:scale-95 text-center"
+            >
+              Usar para factura
+            </button>
           </div>
         </div>
       </div>
@@ -348,25 +441,49 @@ export default function FacturadorForm({
       <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-64 h-32 bg-rose-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3.5 border-b border-white/[0.06]">
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3.5 border-b border-slate-200 dark:border-white/[0.06]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-400">
+            <div className="p-2 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-500 dark:text-rose-400">
               <User className="w-4 h-4" />
             </div>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white font-heading">
+            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-900 dark:text-white font-heading">
               Datos del Cliente / Receptor
             </h2>
           </div>
 
-          {/* Indicador del Correlativo y Nro de Control según talonario SENIAT */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#06080F]/90 border border-white/[0.08] rounded-2xl shadow-inner">
-            <Receipt className="w-3.5 h-3.5 text-rose-400" />
-            <span className="text-[11px] font-bold text-slate-400 tracking-wide">Próxima Factura:</span>
-            <span className="text-xs font-mono font-black text-rose-400 tracking-wider">
-              Nº {proximoCorrelativo}
+          {/* Indicador y Modificador de Correlativo de Factura */}
+          <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-[#06080F]/90 border border-slate-300 dark:border-white/[0.08] rounded-2xl shadow-inner">
+            <Receipt className="w-4 h-4 text-rose-500 dark:text-rose-400 flex-shrink-0" />
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wide">
+              Nº Factura:
             </span>
-            <span className="hidden xs:inline text-[10px] font-mono text-slate-400">
-              (Control: 00-{proximoCorrelativo})
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">Nº</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={numeroFacturaManual !== '' ? numeroFacturaManual : proximoCorrelativo}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
+                  setNumeroFacturaManual && setNumeroFacturaManual(val);
+                }}
+                placeholder={proximoCorrelativo}
+                title="Escribe aquí para cambiar el número de factura si lo necesitas"
+                className="w-20 sm:w-24 bg-white dark:bg-[#0B0F19] border border-slate-300 dark:border-white/20 rounded-xl px-2 py-0.5 font-mono font-black text-rose-600 dark:text-rose-400 text-xs sm:text-sm text-center focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm"
+              />
+              {numeroFacturaManual !== '' && numeroFacturaManual !== proximoCorrelativo && (
+                <button
+                  type="button"
+                  onClick={() => setNumeroFacturaManual && setNumeroFacturaManual('')}
+                  title="Restablecer al número correlativo automático sugerido"
+                  className="px-2 py-0.5 text-[10px] font-bold bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  Auto
+                </button>
+              )}
+            </div>
+            <span className="hidden xs:inline text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              (Control: 00-{String(parseInt(numeroFacturaManual || proximoCorrelativo, 10) || 1).padStart(6, '0')})
             </span>
           </div>
         </div>
@@ -374,12 +491,12 @@ export default function FacturadorForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-300">
-                Cédula / RIF <span className="text-rose-400">*</span>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Cédula / RIF <span className="text-rose-500 dark:text-rose-400">*</span>
               </label>
 
               {/* Botones de Selección Rápida de Prefijo */}
-              <div className="flex items-center gap-1 bg-[#06080F] p-1 rounded-xl border border-white/[0.08]">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#06080F] p-1 rounded-xl border border-slate-300 dark:border-white/[0.08]">
                 {['V', 'J', 'E', 'G'].map((tipo) => {
                   const activo = (cliente.documento || '').startsWith(`${tipo}-`);
                   return (
@@ -391,7 +508,7 @@ export default function FacturadorForm({
                       className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-black transition-all duration-150 cursor-pointer ${
                         activo
                           ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-950/40 scale-105'
-                          : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/[0.06]'
                       }`}
                     >
                       {tipo}
@@ -406,25 +523,25 @@ export default function FacturadorForm({
               value={cliente.documento}
               onChange={(e) => handleDocumentoChange(e.target.value)}
               placeholder="Ej: V-26.946.393 o J-41.265.448-9"
-              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-white font-mono placeholder:text-slate-500 tracking-wider shadow-inner min-h-[46px]"
+              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white font-mono placeholder:text-slate-400 dark:placeholder:text-slate-500 tracking-wider shadow-inner min-h-[46px]"
             />
           </div>
 
           <div className="sm:col-span-2 lg:col-span-2">
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
-              Nombre o Razón Social <span className="text-rose-400">*</span>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Nombre o Razón Social <span className="text-rose-500 dark:text-rose-400">*</span>
             </label>
             <input
               type="text"
               value={cliente.nombre}
               onChange={(e) => handleClienteChange('nombre', e.target.value)}
               placeholder="Ej: Taller Mecánico Los Andes C.A. o Juan Pérez"
-              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-white placeholder:text-slate-500 shadow-inner min-h-[46px]"
+              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-inner min-h-[46px]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
               <span>Teléfono de Contacto</span>
               <span className="text-[10px] text-slate-500 font-normal">Solo números</span>
             </label>
@@ -436,18 +553,17 @@ export default function FacturadorForm({
               value={cliente.telefono}
               onChange={(e) => handleTelefonoChange(e.target.value)}
               onKeyDown={(e) => {
-                // Bloquear cualquier tecla que no sea dígito numérico, permitiendo teclas de control
                 if (e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
                   e.preventDefault();
                 }
               }}
               placeholder="Ej: 0414-1234567"
-              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-white font-mono placeholder:text-slate-500 tracking-wider shadow-inner min-h-[46px]"
+              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white font-mono placeholder:text-slate-400 dark:placeholder:text-slate-500 tracking-wider shadow-inner min-h-[46px]"
             />
           </div>
 
           <div className="sm:col-span-2 lg:col-span-4">
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Dirección de Entrega / Despacho
             </label>
             <input
@@ -455,13 +571,13 @@ export default function FacturadorForm({
               value={cliente.direccion}
               onChange={(e) => handleClienteChange('direccion', e.target.value)}
               placeholder="Ej: Av. Principal, Local Nro 4, Charallave"
-              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-white placeholder:text-slate-500 shadow-inner min-h-[46px]"
+              className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-inner min-h-[46px]"
             />
           </div>
 
           {/* Opciones de Factura: Condiciones y Forma de Pago */}
           <div className="sm:col-span-2 lg:col-span-2">
-            <label className="block text-xs font-bold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Condición de Pago
             </label>
             <div className="grid grid-cols-2 gap-2.5">
@@ -476,9 +592,9 @@ export default function FacturadorForm({
                   className={`py-2.5 px-3 rounded-2xl text-xs font-extrabold transition-all duration-200 border min-h-[44px] cursor-pointer ${
                     condicionPago === c.id
                       ? c.id === 'CONTADO'
-                        ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-rose-500/50 shadow-lg shadow-red-950/40 scale-[1.01]'
-                        : 'bg-gradient-to-r from-amber-600 to-orange-600 text-white border-amber-500/50 shadow-lg shadow-amber-950/40 scale-[1.01]'
-                      : 'bg-[#06080F]/80 text-slate-400 border-white/[0.07] hover:text-white hover:bg-white/[0.04]'
+                        ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-rose-500/50 shadow-md scale-[1.01]'
+                        : 'bg-gradient-to-r from-amber-600 to-orange-600 text-white border-amber-500/50 shadow-md scale-[1.01]'
+                      : 'bg-slate-100 dark:bg-[#06080F]/80 text-slate-700 dark:text-slate-400 border-slate-300 dark:border-white/[0.07] hover:text-slate-950 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/[0.04]'
                   }`}
                 >
                   {c.label}
@@ -489,13 +605,13 @@ export default function FacturadorForm({
 
           <div className="sm:col-span-2 lg:col-span-2">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-300">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Forma de Pago
               </label>
               <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border shadow-sm ${
                 monedaIngreso === 'VES' 
-                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
-                  : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30' 
+                  : 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-500/30'
               }`}>
                 Cobro en {monedaIngreso === 'VES' ? 'Bolívares (Bs.)' : 'Dólares ($)'}
               </span>
@@ -522,12 +638,12 @@ export default function FacturadorForm({
                     className={`py-2 px-2 rounded-2xl text-[11px] font-bold transition-all duration-200 border min-h-[44px] flex items-center justify-center gap-1.5 cursor-pointer ${
                       activo
                         ? f.moneda === 'VES'
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-400/40 shadow-lg shadow-emerald-950/50 scale-[1.02]'
-                          : 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-rose-400/40 shadow-lg shadow-red-950/50 scale-[1.02]'
-                        : 'bg-[#06080F]/80 text-slate-400 border-white/[0.07] hover:text-white hover:border-white/20 hover:bg-white/[0.04]'
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-400/40 shadow-md scale-[1.02]'
+                          : 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-rose-400/40 shadow-md scale-[1.02]'
+                        : 'bg-slate-100 dark:bg-[#06080F]/80 text-slate-700 dark:text-slate-400 border-slate-300 dark:border-white/[0.07] hover:text-slate-950 dark:hover:text-white hover:border-slate-400 dark:hover:border-white/20 hover:bg-slate-200 dark:hover:bg-white/[0.04]'
                     }`}
                   >
-                    <IconComp className={`w-3.5 h-3.5 flex-shrink-0 ${activo ? 'text-white' : f.moneda === 'VES' ? 'text-emerald-400' : 'text-rose-400'}`} />
+                    <IconComp className={`w-3.5 h-3.5 flex-shrink-0 ${activo ? 'text-white' : f.moneda === 'VES' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} />
                     <span className="truncate">{f.label}</span>
                   </button>
                 );
@@ -541,20 +657,20 @@ export default function FacturadorForm({
       <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden group">
         <div className="absolute top-0 right-1/4 w-80 h-32 bg-red-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3.5 border-b border-white/[0.06]">
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3.5 border-b border-slate-200 dark:border-white/[0.06]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-red-500/15 border border-red-500/30 rounded-xl text-rose-400">
+            <div className="p-2 bg-red-500/15 border border-red-500/30 rounded-xl text-rose-500 dark:text-rose-400">
               <Receipt className="w-4 h-4" />
             </div>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white font-heading">
+            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-900 dark:text-white font-heading">
               Renglones de la Guía ({items.length})
             </h2>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap justify-between sm:justify-end">
             {/* Selector de Moneda de Ingreso */}
-            <div className="flex items-center gap-1 bg-[#06080F]/90 p-1 rounded-2xl border border-white/[0.08] shadow-inner">
-              <span className="text-[10px] font-bold text-slate-400 px-2.5 uppercase font-mono tracking-wider">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#06080F]/90 p-1 rounded-2xl border border-slate-300 dark:border-white/[0.08] shadow-inner">
+              <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 px-2.5 uppercase font-mono tracking-wider">
                 Precios en:
               </span>
               <button
@@ -562,8 +678,8 @@ export default function FacturadorForm({
                 onClick={() => setMonedaIngreso && setMonedaIngreso('VES')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
                   monedaIngreso === 'VES'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/40 scale-[1.02]'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md scale-[1.02]'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
                 Bs. Bolívares
@@ -573,8 +689,8 @@ export default function FacturadorForm({
                 onClick={() => setMonedaIngreso && setMonedaIngreso('USD')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
                   monedaIngreso === 'USD'
-                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-950/40 scale-[1.02]'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md scale-[1.02]'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
                 $ Dólares
@@ -584,7 +700,7 @@ export default function FacturadorForm({
             <button
               type="button"
               onClick={agregarItem}
-              className="inline-flex items-center gap-2 px-4 py-2.5 btn-gradient-red text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-red-950/40 transition-all hover:scale-[1.02] active:scale-95 min-h-[42px] cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 btn-gradient-red text-white rounded-2xl text-xs sm:text-sm font-bold shadow-md transition-all hover:scale-[1.02] active:scale-95 min-h-[42px] cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Agregar Renglón</span>
@@ -593,31 +709,31 @@ export default function FacturadorForm({
         </div>
 
         {/* VISTA 1: TABLA PARA COMPUTADORAS Y TABLETS */}
-        <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/[0.06] bg-[#06080F]/60">
+        <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-slate-50/50 dark:bg-[#06080F]/60">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#0B0F19]/90 border-b border-white/[0.08] text-[11px] font-extrabold text-slate-400 uppercase tracking-wider font-heading">
+              <tr className="bg-slate-100 dark:bg-[#0B0F19]/90 border-b border-slate-200 dark:border-white/[0.08] text-[11px] font-extrabold text-slate-700 dark:text-slate-400 uppercase tracking-wider font-heading">
                 <th className="py-3 px-3.5 w-12 text-center">#</th>
                 <th className="py-3 px-3 w-28 text-center">Cant.</th>
                 <th className="py-3 px-4">Descripción del Repuesto</th>
                 <th className="py-3 px-4 w-48 text-right">
                   {monedaIngreso === 'VES' ? (
-                    <span className="text-emerald-400 font-black">P. Unit (Bs.)</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-black">P. Unit (Bs.)</span>
                   ) : (
-                    <span className="text-rose-400 font-black">P. Unit ($)</span>
+                    <span className="text-rose-600 dark:text-rose-400 font-black">P. Unit ($)</span>
                   )}
                 </th>
                 <th className="py-3 px-4 w-48 text-right">
                   {monedaIngreso === 'VES' ? (
-                    <span className="text-emerald-400 font-black">Subtotal (Bs.)</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-black">Subtotal (Bs.)</span>
                   ) : (
-                    <span className="text-rose-400 font-black">Subtotal ($)</span>
+                    <span className="text-rose-600 dark:text-rose-400 font-black">Subtotal ($)</span>
                   )}
                 </th>
                 <th className="py-3 px-3 w-14 text-center"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+            <tbody className="divide-y divide-slate-200 dark:divide-white/[0.04]">
               {items.map((item, index) => {
                 const qty = parseFloat(item.cantidad) || 0;
                 const rateClean = parseVenezuelanNumber(tasaBCV);
@@ -638,7 +754,7 @@ export default function FacturadorForm({
                 const subtotalBs = qty * unitPriceBs;
 
                 return (
-                  <tr key={item.id || index} className="group hover:bg-white/[0.02] transition-colors">
+                  <tr key={item.id || index} className="group hover:bg-slate-100/60 dark:hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 px-3.5 text-center text-xs font-mono font-bold text-slate-500">
                       {index + 1}
                     </td>
@@ -651,7 +767,7 @@ export default function FacturadorForm({
                         value={item.cantidad}
                         onChange={(e) => handleItemChange(index, 'cantidad', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, index)}
-                        className="w-full input-cockpit rounded-xl px-2 py-2 text-sm text-center font-mono font-black text-white shadow-inner"
+                        className="w-full input-cockpit rounded-xl px-2 py-2 text-sm text-center font-mono font-black text-slate-900 dark:text-white shadow-inner"
                         placeholder="1"
                       />
                     </td>
@@ -663,14 +779,14 @@ export default function FacturadorForm({
                         onChange={(e) => handleItemChange(index, 'descripcion', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, index)}
                         placeholder="Ej: Pastillas de Freno Delanteras Toyota Corolla 2012"
-                        className="w-full input-cockpit rounded-xl px-4 py-2 text-sm text-white placeholder:text-slate-500 shadow-inner"
+                        className="w-full input-cockpit rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-inner"
                       />
                     </td>
 
                     <td className="py-2.5 px-4">
                       <div className="relative">
                         <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-black ${
-                          monedaIngreso === 'VES' ? 'text-emerald-400' : 'text-rose-400'
+                          monedaIngreso === 'VES' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                         }`}>
                           {monedaIngreso === 'VES' ? 'Bs.' : '$'}
                         </span>
@@ -682,10 +798,10 @@ export default function FacturadorForm({
                           onBlur={() => handlePrecioBlur(index)}
                           onKeyDown={(e) => handleKeyDown(e, index)}
                           placeholder={monedaIngreso === 'VES' ? '0,00' : '0.00'}
-                          className="w-full input-cockpit rounded-xl pl-10 pr-3 py-2 text-sm text-right font-mono font-black text-white shadow-inner"
+                          className="w-full input-cockpit rounded-xl pl-10 pr-3 py-2 text-sm text-right font-mono font-black text-slate-900 dark:text-white shadow-inner"
                         />
                       </div>
-                      <div className="text-[10px] font-mono text-slate-400 text-right pr-1 pt-1">
+                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 text-right pr-1 pt-1">
                         {monedaIngreso === 'VES'
                           ? `≈ ${formatUSD(unitPriceUSD)}`
                           : `≈ ${formatVES(unitPriceBs)}`}
@@ -693,10 +809,10 @@ export default function FacturadorForm({
                     </td>
 
                     <td className="py-3 px-4 text-right font-mono">
-                      <div className="text-sm font-black text-white">
+                      <div className="text-sm font-black text-slate-900 dark:text-white">
                         {monedaIngreso === 'VES' ? formatVES(subtotalBs) : formatUSD(subtotalUSD)}
                       </div>
-                      <div className="text-[10px] text-slate-400 pt-0.5">
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 pt-0.5">
                         {monedaIngreso === 'VES' ? `≈ ${formatUSD(subtotalUSD)}` : `≈ ${formatVES(subtotalBs)}`}
                       </div>
                     </td>
@@ -706,7 +822,7 @@ export default function FacturadorForm({
                         type="button"
                         onClick={() => eliminarItem(index)}
                         title="Eliminar renglón"
-                        className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all active:scale-90 cursor-pointer"
+                        className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all active:scale-90 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -742,17 +858,17 @@ export default function FacturadorForm({
             return (
               <div 
                 key={item.id || index}
-                className="bg-[#06080F]/90 border border-white/[0.08] rounded-2xl p-4 space-y-3.5 shadow-inner"
+                className="bg-slate-50 dark:bg-[#06080F]/90 border border-slate-200 dark:border-white/[0.08] rounded-2xl p-4 space-y-3.5 shadow-sm"
               >
-                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
-                  <span className="text-xs font-mono font-bold text-slate-400 bg-white/[0.05] px-2.5 py-1 rounded-lg border border-white/[0.06]">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-2.5">
+                  <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-400 bg-slate-200/80 dark:bg-white/[0.05] px-2.5 py-1 rounded-lg border border-slate-300 dark:border-white/[0.06]">
                     Renglón #{index + 1}
                   </span>
 
                   <button
                     type="button"
                     onClick={() => eliminarItem(index)}
-                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"
+                    className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"
                     title="Eliminar renglón"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -760,7 +876,7 @@ export default function FacturadorForm({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-400 mb-1">
                     Descripción del Repuesto
                   </label>
                   <input
@@ -768,20 +884,20 @@ export default function FacturadorForm({
                     value={item.descripcion}
                     onChange={(e) => handleItemChange(index, 'descripcion', e.target.value)}
                     placeholder="Ej: Pastillas de Freno Toyota Corolla"
-                    className="w-full input-cockpit rounded-xl px-3.5 py-2.5 text-base text-white placeholder:text-slate-500"
+                    className="w-full input-cockpit rounded-xl px-3.5 py-2.5 text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-400 mb-1">
                       Cantidad
                     </label>
                     <div className="flex items-center">
                       <button
                         type="button"
                         onClick={() => ajustarCantidad(index, -1)}
-                        className="w-10 h-11 bg-white/[0.05] border border-white/[0.1] rounded-l-xl text-white font-bold hover:bg-white/[0.1] active:scale-95 flex items-center justify-center cursor-pointer"
+                        className="w-10 h-11 bg-slate-200 dark:bg-white/[0.05] border border-slate-300 dark:border-white/[0.1] rounded-l-xl text-slate-800 dark:text-white font-bold hover:bg-slate-300 dark:hover:bg-white/[0.1] active:scale-95 flex items-center justify-center cursor-pointer"
                       >
                         -
                       </button>
@@ -790,12 +906,12 @@ export default function FacturadorForm({
                         min="1"
                         value={item.cantidad}
                         onChange={(e) => handleItemChange(index, 'cantidad', e.target.value)}
-                        className="w-full h-11 bg-[#06080F] border-y border-white/[0.1] text-center text-base font-mono font-bold text-white focus:outline-none"
+                        className="w-full h-11 bg-white dark:bg-[#06080F] border-y border-slate-300 dark:border-white/[0.1] text-center text-base font-mono font-bold text-slate-900 dark:text-white focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => ajustarCantidad(index, 1)}
-                        className="w-10 h-11 bg-white/[0.05] border border-white/[0.1] rounded-r-xl text-white font-bold hover:bg-white/[0.1] active:scale-95 flex items-center justify-center cursor-pointer"
+                        className="w-10 h-11 bg-slate-200 dark:bg-white/[0.05] border border-slate-300 dark:border-white/[0.1] rounded-r-xl text-slate-800 dark:text-white font-bold hover:bg-slate-300 dark:hover:bg-white/[0.1] active:scale-95 flex items-center justify-center cursor-pointer"
                       >
                         +
                       </button>
@@ -803,12 +919,12 @@ export default function FacturadorForm({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-400 mb-1">
                       {monedaIngreso === 'VES' ? 'Precio Unitario (Bs.)' : 'Precio Unitario ($)'}
                     </label>
                     <div className="relative">
                       <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold ${
-                        monedaIngreso === 'VES' ? 'text-emerald-400' : 'text-rose-400'
+                        monedaIngreso === 'VES' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                       }`}>
                         {monedaIngreso === 'VES' ? 'Bs.' : '$'}
                       </span>
@@ -819,10 +935,10 @@ export default function FacturadorForm({
                         onChange={(e) => handlePrecioChange(index, e.target.value)}
                         onBlur={() => handlePrecioBlur(index)}
                         placeholder={monedaIngreso === 'VES' ? '0,00' : '0.00'}
-                        className="w-full h-11 input-cockpit rounded-xl pl-9 pr-3 text-base text-right font-mono font-bold text-white"
+                        className="w-full h-11 input-cockpit rounded-xl pl-9 pr-3 text-base text-right font-mono font-bold text-slate-900 dark:text-white"
                       />
                     </div>
-                    <div className="text-[10px] font-mono text-slate-400 text-right pr-1 pt-1">
+                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 text-right pr-1 pt-1">
                       {monedaIngreso === 'VES'
                         ? `≈ ${formatUSD(unitPriceUSD)}`
                         : `≈ ${formatVES(unitPriceBs)}`}
@@ -830,13 +946,13 @@ export default function FacturadorForm({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-xs">
-                  <span className="text-slate-400">Subtotal del ítem:</span>
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-white/[0.06] text-xs">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Subtotal del ítem:</span>
                   <div className="text-right">
-                    <span className="font-mono font-black text-sm text-white block">
+                    <span className="font-mono font-black text-sm text-slate-900 dark:text-white block">
                       {monedaIngreso === 'VES' ? formatVES(subtotalBs) : formatUSD(subtotalUSD)}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                       {monedaIngreso === 'VES' ? `≈ ${formatUSD(subtotalUSD)}` : `≈ ${formatVES(subtotalBs)}`}
                     </span>
                   </div>
@@ -848,16 +964,16 @@ export default function FacturadorForm({
           <button
             type="button"
             onClick={agregarItem}
-            className="w-full py-3.5 bg-white/[0.03] hover:bg-white/[0.06] border border-dashed border-white/20 text-slate-300 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+            className="w-full py-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.03] dark:hover:bg-white/[0.06] border border-dashed border-slate-300 dark:border-white/20 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-rose-400" />
+            <Plus className="w-4 h-4 text-rose-500 dark:text-rose-400" />
             <span>Agregar Otro Repuesto</span>
           </button>
         </div>
 
         {/* Observaciones */}
-        <div className="mt-5 pt-4 border-t border-white/[0.06]">
-          <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+        <div className="mt-5 pt-4 border-t border-slate-200 dark:border-white/[0.06]">
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-400 mb-1.5">
             Observaciones o Notas de Entrega (opcional)
           </label>
           <input
@@ -865,7 +981,7 @@ export default function FacturadorForm({
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
             placeholder="Ej: Repuestos entregados en mostrador con 30 días de garantía."
-            className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-white placeholder:text-slate-500 min-h-[46px]"
+            className="w-full input-cockpit rounded-2xl px-4 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 min-h-[46px]"
           />
         </div>
       </div>
@@ -873,48 +989,48 @@ export default function FacturadorForm({
       {/* 4. Resumen de Totales - Twin HUD Telemetry Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
         {/* Recuadro de Bolívares Oficial BCV con Desglose Completo de IVA */}
-        <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden space-y-3 border-t-2 border-t-emerald-500/80 group">
+        <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden space-y-3 border-t-4 border-t-emerald-500 bg-emerald-50/50 dark:bg-transparent group shadow-sm">
           <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/15 transition-all duration-300"></div>
 
           <div className="relative flex items-center justify-between mb-2">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 font-heading">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-400 font-heading">
               Cálculo Oficial en Bolívares (BCV)
             </span>
-            <span className="text-[11px] font-mono font-bold px-2.5 py-1 bg-[#06080F] border border-emerald-500/30 text-emerald-300 rounded-xl shadow-inner">
+            <span className="text-[11px] font-mono font-bold px-2.5 py-1 bg-white dark:bg-[#06080F] border border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 rounded-xl shadow-inner">
               Tasa: {formatNumber(tasaBCV, 2)} Bs/$
             </span>
           </div>
 
-          <div className="relative flex items-center justify-between text-xs sm:text-sm text-slate-300">
+          <div className="relative flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-300">
             <span className="font-medium">Base Imponible (Subtotal Bs.):</span>
-            <span className="font-mono font-bold text-white text-sm sm:text-base">
+            <span className="font-mono font-bold text-slate-900 dark:text-white text-sm sm:text-base">
               {formatVES(totals.baseImponibleBs)}
             </span>
           </div>
 
-          <div className="relative flex items-center justify-between text-xs sm:text-sm text-slate-300">
+          <div className="relative flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-300">
             <span className="font-medium flex items-center gap-1.5">
               <span>I.V.A. (16.00% en Bs.):</span>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded">
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border border-emerald-500/30 rounded">
                 SENIAT
               </span>
             </span>
-            <span className="font-mono font-bold text-emerald-300 text-sm sm:text-base">
+            <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300 text-sm sm:text-base">
               {formatVES(totals.ivaBs)}
             </span>
           </div>
 
-          <div className="relative pt-4 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-end justify-between gap-2.5">
+          <div className="relative pt-4 border-t border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-end justify-between gap-2.5">
             <div>
-              <span className="text-xs font-extrabold text-slate-300 font-heading uppercase tracking-wider block">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-300 font-heading uppercase tracking-wider block">
                 Total a Pagar (Bolívares)
               </span>
-              <span className="text-[11px] text-emerald-400/80 font-mono font-medium">
+              <span className="text-[11px] text-emerald-700 dark:text-emerald-400/80 font-mono font-medium">
                 Monto oficial con I.V.A. (16%)
               </span>
             </div>
             <div className="text-left sm:text-right">
-              <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)] tracking-tight">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
                 {formatVES(totals.totalBs)}
               </span>
             </div>
@@ -922,39 +1038,39 @@ export default function FacturadorForm({
         </div>
 
         {/* Desglose Matemático USD */}
-        <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden space-y-3 border-t-2 border-t-rose-500/80 group">
+        <div className="glass-card rounded-3xl p-5 sm:p-6 relative overflow-hidden space-y-3 border-t-4 border-t-rose-500 bg-rose-50/30 dark:bg-transparent group shadow-sm">
           <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-rose-500/15 transition-all duration-300"></div>
 
           <div className="relative flex items-center justify-between mb-2">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-rose-400 font-heading">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-rose-700 dark:text-rose-400 font-heading">
               Desglose de Referencia (USD)
             </span>
-            <span className="text-[11px] font-mono font-bold px-2.5 py-1 bg-[#06080F] border border-rose-500/30 text-rose-300 rounded-xl shadow-inner">
+            <span className="text-[11px] font-mono font-bold px-2.5 py-1 bg-white dark:bg-[#06080F] border border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 rounded-xl shadow-inner">
               $ Dólares
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-300">
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-300">
             <span className="font-medium">Base Imponible (Subtotal $):</span>
-            <span className="font-mono font-bold text-white text-sm sm:text-base">{formatUSD(totals.baseImponible)}</span>
+            <span className="font-mono font-bold text-slate-900 dark:text-white text-sm sm:text-base">{formatUSD(totals.baseImponible)}</span>
           </div>
 
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-300">
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-300">
             <span className="font-medium">I.V.A. (16.00% en $):</span>
-            <span className="font-mono font-bold text-white text-sm sm:text-base">{formatUSD(totals.iva)}</span>
+            <span className="font-mono font-bold text-slate-900 dark:text-white text-sm sm:text-base">{formatUSD(totals.iva)}</span>
           </div>
 
-          <div className="pt-4 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-end justify-between gap-2.5">
+          <div className="pt-4 border-t border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-end justify-between gap-2.5">
             <div>
-              <span className="text-xs font-extrabold text-slate-300 font-heading uppercase tracking-wider block">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-300 font-heading uppercase tracking-wider block">
                 Total a Pagar (USD)
               </span>
-              <span className="text-[11px] text-rose-400/80 font-mono font-medium">
+              <span className="text-[11px] text-rose-600 dark:text-rose-400/80 font-mono font-medium">
                 Monto referencial en Divisas
               </span>
             </div>
             <div className="text-left sm:text-right">
-              <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] tracking-tight">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono text-slate-900 dark:text-white tracking-tight">
                 {formatUSD(totals.totalUSD)}
               </span>
             </div>
@@ -964,17 +1080,17 @@ export default function FacturadorForm({
 
       {/* Mensaje de guía si faltan datos para emitir */}
       {!formularioValido && (
-        <div className="bg-[#0B0F19]/90 border border-white/[0.08] rounded-2xl px-5 py-3 text-center text-xs text-slate-300 font-medium">
-          💡 Para habilitar la emisión: indica la <strong className="text-rose-400 font-bold">Cédula/RIF</strong>, <strong className="text-rose-400 font-bold">Nombre</strong> del cliente y al menos un <strong className="text-emerald-400 font-bold">repuesto con precio mayor a 0</strong>.
+        <div className="bg-amber-50 dark:bg-[#0B0F19]/90 border border-amber-200 dark:border-white/[0.08] rounded-2xl px-5 py-3 text-center text-xs text-amber-900 dark:text-slate-300 font-medium shadow-sm">
+          💡 Para habilitar la emisión: indica la <strong className="text-rose-600 dark:text-rose-400 font-bold">Cédula/RIF</strong>, <strong className="text-rose-600 dark:text-rose-400 font-bold">Nombre</strong> del cliente y al menos un <strong className="text-emerald-600 dark:text-emerald-400 font-bold">repuesto con precio mayor a 0</strong>.
         </div>
       )}
 
-      {/* 5. Barra de Acciones Flotante del Mostrador (Fondo sólido para evitar transparencias molestas) */}
-      <div className="bg-[#0B0F19]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-3.5 sm:p-4.5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sticky bottom-4 z-30 shadow-2xl shadow-black/90">
+      {/* 5. Barra de Acciones del Mostrador (Normal / No fija para máxima comodidad en celulares) */}
+      <div className="glass-card rounded-3xl p-4 sm:p-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xl mt-6">
         <button
           type="button"
           onClick={onLimpiar}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-slate-300 hover:text-white rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-95 cursor-pointer min-h-[48px]"
+          className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] border border-slate-300 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-white/20 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 active:scale-95 cursor-pointer min-h-[48px]"
         >
           <RotateCcw className="w-4 h-4" />
           <span>Nueva Factura / Limpiar</span>
@@ -989,7 +1105,7 @@ export default function FacturadorForm({
           className={`w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl text-sm font-extrabold shadow-xl transition-all duration-200 min-h-[48px] ${
             formularioValido && !loading
               ? 'btn-gradient-red text-white cursor-pointer hover:scale-[1.01] active:scale-95'
-              : 'bg-[#0B0F19] border border-white/[0.06] text-slate-500 opacity-40 cursor-not-allowed shadow-none'
+              : 'bg-slate-100 dark:bg-[#0B0F19] border border-slate-200 dark:border-white/[0.06] text-slate-400 dark:text-slate-500 opacity-50 cursor-not-allowed shadow-none'
           }`}
         >
           <Printer className={`w-4 h-4 ${formularioValido && !loading ? 'animate-bounce' : ''}`} />

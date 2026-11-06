@@ -177,20 +177,20 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
       )}
 
       {/* 1. Barra Superior con Botón de Regreso y Título */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 glass-card p-4 sm:p-5 rounded-3xl">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 glass-card p-4 sm:p-5 rounded-3xl shadow-sm">
         <div className="flex items-center gap-3.5">
           <button
             onClick={onVolverAlFacturador}
-            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] hover:border-white/20 rounded-2xl transition-all active:scale-95 cursor-pointer"
+            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white border border-slate-300 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-white/20 rounded-2xl transition-all active:scale-95 cursor-pointer shadow-sm"
             title="Regresar al Facturador de mostrador"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-base sm:text-lg font-black text-white font-heading tracking-wide">
+            <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-heading tracking-wide">
               HISTORIAL Y GESTIÓN DE FACTURAS
             </h1>
-            <p className="text-xs text-slate-400 tracking-wide mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 tracking-wide mt-0.5">
               Consulta, filtra, reimprime o audita comprobantes emitidos
             </p>
           </div>
@@ -199,41 +199,41 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
         <button
           onClick={cargarGuias}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/[0.08] hover:border-emerald-500/30 rounded-2xl text-xs font-bold transition-all active:scale-95 min-h-[44px] cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white border border-slate-300 dark:border-white/[0.08] hover:border-emerald-500/30 rounded-2xl text-xs font-bold transition-all active:scale-95 min-h-[44px] cursor-pointer shadow-sm"
         >
-          <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
+          <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-500' : ''}`} />
           <span>Actualizar Lista</span>
         </button>
       </div>
 
       {/* 2. Tarjetas de Resumen / KPIs Telemetry */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
-          <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block font-heading">
+        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group shadow-sm">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 dark:bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
+          <span className="text-xs font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider block font-heading">
             Facturas Registradas
           </span>
-          <div className="text-3xl font-black font-mono text-white mt-1.5">
+          <div className="text-3xl font-black font-mono text-slate-900 dark:text-white mt-1.5">
             {totalGuias}
           </div>
         </div>
 
-        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group border-t-2 border-t-rose-500/80">
+        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group border-t-4 border-t-rose-500 bg-rose-50/30 dark:bg-transparent shadow-sm">
           <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none"></div>
-          <span className="text-xs font-extrabold text-slate-300 uppercase tracking-wider block font-heading">
+          <span className="text-xs font-extrabold text-rose-700 dark:text-slate-300 uppercase tracking-wider block font-heading">
             Total Facturado (USD)
           </span>
-          <div className="text-3xl font-black font-mono text-white mt-1.5 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+          <div className="text-3xl font-black font-mono text-slate-900 dark:text-white mt-1.5">
             {formatUSD(totalMontoUSD)}
           </div>
         </div>
 
-        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group border-t-2 border-t-emerald-500/80">
+        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group border-t-4 border-t-emerald-500 bg-emerald-50/50 dark:bg-transparent shadow-sm">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-          <span className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider block font-heading">
+          <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider block font-heading">
             Total Oficial (Bolívares)
           </span>
-          <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-1.5 truncate drop-shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+          <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-700 dark:text-emerald-400 mt-1.5 truncate">
             {formatVES(totalMontoBs)}
           </div>
         </div>
@@ -253,12 +253,12 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                 setPaginaActual(1);
               }}
               placeholder="Buscar por número de factura (ej: 000001), cliente o cédula/RIF..."
-              className="w-full input-cockpit rounded-2xl pl-11 pr-4 py-2.5 text-base sm:text-sm text-white placeholder:text-slate-500 min-h-[46px]"
+              className="w-full input-cockpit rounded-2xl pl-11 pr-4 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 min-h-[46px]"
             />
           </div>
 
           {/* Filtros rápidos por fecha */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 bg-[#06080F]/90 p-1 rounded-2xl border border-white/[0.08]">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 bg-slate-100 dark:bg-[#06080F]/90 p-1 rounded-2xl border border-slate-200 dark:border-white/[0.08]">
             {[
               { id: 'todas', label: 'Todas' },
               { id: 'hoy', label: 'Hoy' },
@@ -275,7 +275,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 min-h-[38px] cursor-pointer ${
                   filtroFecha === f.id
                     ? 'btn-gradient-red text-white scale-[1.02]'
-                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 {f.label}
@@ -301,7 +301,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
-                  <tr className="bg-[#0B0F19]/90 border-b border-white/[0.08] text-[11px] font-extrabold text-slate-400 uppercase tracking-wider font-heading">
+                  <tr className="bg-slate-50 dark:bg-[#0B0F19]/90 border-b border-slate-200 dark:border-white/[0.08] text-[11px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider font-heading">
                     <th className="py-3.5 px-4">Factura / Control</th>
                     <th className="py-3.5 px-4">Fecha y Hora</th>
                     <th className="py-3.5 px-4">Cliente / Razón Social</th>
@@ -311,40 +311,40 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                     <th className="py-3.5 px-4 text-center">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.04]">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {guiasPaginadas.map((guia) => (
-                    <tr key={guia.id} className="hover:bg-white/[0.02] transition-colors">
+                    <tr key={guia.id} className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="py-3.5 px-4">
                         <div>
-                          <span className="font-mono font-black text-rose-300 bg-rose-600/15 border border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
+                          <span className="font-mono font-black text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-600/15 border border-rose-200 dark:border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
                             FACTURA Nº {(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
                           </span>
-                          <div className="text-[10px] font-mono text-slate-400 mt-1">
+                          <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-1 font-semibold">
                             Control: 00-{(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-slate-300 font-mono text-xs">
+                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-mono text-xs">
                         {formatDate(guia.fecha)}
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-white tracking-wide">{guia.cliente_nombre}</div>
-                        <div className="text-xs text-slate-400 font-mono">{guia.cliente_documento}</div>
+                        <div className="font-bold text-slate-900 dark:text-white tracking-wide">{guia.cliente_nombre}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{guia.cliente_documento}</div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-mono text-slate-300">
-                        <span className="px-2 py-0.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                      <td className="py-3.5 px-4 text-center font-mono">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06] text-slate-700 dark:text-slate-300 font-bold">
                           {guia.items?.length || 0}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono font-black text-white">
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 dark:text-white">
                         {formatUSD(guia.total_usd)}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-400">
+                      <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
                         {formatVES(guia.total_bs)}
                       </td>
 
@@ -353,9 +353,9 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                           <button
                             onClick={() => onVerGuia(guia)}
                             title="Ver y reimprimir guía"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/[0.08] hover:border-emerald-500/30 rounded-xl text-xs font-bold transition-all min-h-[36px] cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/40 rounded-xl text-xs font-bold transition-all min-h-[36px] cursor-pointer"
                           >
-                            <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                            <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                             <span className="hidden sm:inline">Ver</span>
                           </button>
 
@@ -365,7 +365,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                               setError(null);
                             }}
                             title="Eliminar guía"
-                            className="p-2 bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/[0.08] hover:border-rose-500/30 rounded-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+                            className="p-2 bg-rose-50 hover:bg-rose-100 dark:bg-white/[0.04] dark:hover:bg-rose-500/20 text-rose-600 dark:text-slate-400 hover:text-rose-700 dark:hover:text-rose-400 border border-rose-200 dark:border-white/[0.08] hover:border-rose-400 rounded-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -378,30 +378,30 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
             </div>
 
             {/* VISTA 2: TARJETAS COMPACTAS PARA TELÉFONOS */}
-            <div className="md:hidden divide-y divide-white/[0.06] p-3 space-y-3">
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-white/[0.06] p-3 space-y-3">
               {guiasPaginadas.map((guia) => (
-                <div key={guia.id} className="bg-[#06080F]/90 p-4 rounded-2xl border border-white/[0.08] space-y-3 shadow-inner">
+                <div key={guia.id} className="bg-slate-50 dark:bg-[#06080F]/90 p-4 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-3 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-black text-rose-300 bg-rose-600/15 border border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
+                    <span className="font-mono font-black text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-600/15 border border-rose-200 dark:border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
                       FACTURA Nº {(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
                     </span>
-                    <span className="text-[11px] text-slate-400 font-mono">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono font-medium">
                       {formatDate(guia.fecha)}
                     </span>
                   </div>
 
                   <div>
-                    <div className="font-bold text-white text-sm tracking-wide">{guia.cliente_nombre}</div>
-                    <div className="text-xs text-slate-400 font-mono">{guia.cliente_documento}</div>
+                    <div className="font-bold text-slate-900 dark:text-white text-sm tracking-wide">{guia.cliente_nombre}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{guia.cliente_documento}</div>
                   </div>
 
-                  <div className="flex items-end justify-between pt-2.5 border-t border-white/[0.06]">
+                  <div className="flex items-end justify-between pt-2.5 border-t border-slate-200 dark:border-white/[0.06]">
                     <div>
-                      <span className="text-[10px] text-slate-400 block font-medium">Total a Pagar (Bs.):</span>
-                      <span className="text-base font-black font-mono text-emerald-400 block">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Total a Pagar (Bs.):</span>
+                      <span className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400 block">
                         {formatVES(guia.total_bs)}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-medium">
                         ≈ {formatUSD(guia.total_usd)}
                       </span>
                     </div>
@@ -409,9 +409,9 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => onVerGuia(guia)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.1] rounded-xl text-xs font-bold transition-all min-h-[38px] cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-200/80 hover:bg-slate-300 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-800 dark:text-white border border-slate-300 dark:border-white/[0.1] rounded-xl text-xs font-bold transition-all min-h-[38px] cursor-pointer"
                       >
-                        <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                        <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>Ver</span>
                       </button>
 
@@ -420,7 +420,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                           setGuiaAEliminar(guia);
                           setError(null);
                         }}
-                        className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center cursor-pointer"
+                        className="p-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-xl transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center cursor-pointer"
                         title="Eliminar factura"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -434,7 +434,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
         )}
 
         {/* 5. Controles de Paginación */}
-        <div className="p-4 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="p-4 border-t border-slate-200 dark:border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
           <div className="flex items-center gap-2">
             <span>Mostrar</span>
             <select
@@ -443,7 +443,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                 setPorPagina(Number(e.target.value));
                 setPaginaActual(1);
               }}
-              className="bg-[#06080F] border border-white/[0.1] rounded-xl px-2.5 py-1 text-white font-mono focus:outline-none"
+              className="bg-white dark:bg-[#06080F] border border-slate-300 dark:border-white/[0.1] rounded-xl px-2.5 py-1 text-slate-800 dark:text-white font-mono focus:outline-none"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -457,20 +457,20 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
             <button
               onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
               disabled={paginaActual === 1}
-              className="p-2 bg-white/[0.04] hover:bg-white/[0.08] text-white rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-800 dark:text-white border border-slate-200 dark:border-transparent rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
               title="Página Anterior"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <span className="px-3 py-1 font-mono font-bold text-white">
+            <span className="px-3 py-1 font-mono font-bold text-slate-800 dark:text-white">
               Página {paginaActual} de {totalPaginas}
             </span>
 
             <button
               onClick={() => setPaginaActual(prev => Math.min(totalPaginas, prev + 1))}
               disabled={paginaActual === totalPaginas}
-              className="p-2 bg-white/[0.04] hover:bg-white/[0.08] text-white rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-800 dark:text-white border border-slate-200 dark:border-transparent rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
               title="Página Siguiente"
             >
               <ChevronRight className="w-4 h-4" />
@@ -481,27 +481,27 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
 
       {/* Modal de Confirmación de Eliminación */}
       {guiaAEliminar && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-slide-up">
-          <div className="w-full max-w-md bg-[#0B0F19] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-400">
-              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
-                <Trash2 className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-slide-up">
+          <div className="w-full max-w-md bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-500 dark:text-rose-400">
+              <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-2xl">
+                <Trash2 className="w-6 h-6 text-rose-600 dark:text-rose-400" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white font-heading">¿Eliminar esta Factura?</h3>
-                <p className="text-xs text-slate-400">Esta acción no se puede deshacer.</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">¿Eliminar esta Factura?</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Esta acción no se puede deshacer.</p>
               </div>
             </div>
 
-            <div className="bg-[#06080F] p-4 rounded-2xl border border-white/[0.06] text-xs space-y-1.5">
-              <p><strong>Comprobante:</strong> <span className="font-mono text-rose-400 font-bold">{guiaAEliminar.codigo_guia}</span></p>
+            <div className="bg-slate-50 dark:bg-[#06080F] p-4 rounded-2xl border border-slate-200 dark:border-white/[0.06] text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
+              <p><strong>Comprobante:</strong> <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">{guiaAEliminar.codigo_guia}</span></p>
               <p><strong>Cliente:</strong> {guiaAEliminar.cliente_nombre} ({guiaAEliminar.cliente_documento})</p>
               <p><strong>Monto Total:</strong> {formatUSD(guiaAEliminar.total_usd)} ({formatVES(guiaAEliminar.total_bs)})</p>
             </div>
 
             {error && (
-              <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-2xl text-rose-300 text-xs flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+              <div className="p-3 bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 rounded-2xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
                 <span className="leading-relaxed font-medium">{error}</span>
               </div>
             )}
@@ -513,7 +513,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                   setGuiaAEliminar(null);
                   setError(null);
                 }}
-                className="px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 rounded-2xl text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold transition-colors cursor-pointer border border-slate-200 dark:border-transparent"
               >
                 Cancelar
               </button>
