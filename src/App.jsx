@@ -100,25 +100,44 @@ export default function App() {
     consultarProximoCorrelativo();
   }, [vista]);
 
-  // Cargar Tasa BCV Oficial en tiempo real
-  const cargarTasaBCV = async () => {
+  // Cargar Tasas Oficiales y de Mercado en tiempo real
+  const cargarTasaBCV = async (actualizarInputActivo = false) => {
     setCargandoBCV(true);
     try {
       const data = await fetchTasaBCV();
       if (data && data.rate) {
-        setTasaBCV(data.rate);
         setBcvInfo(data);
+        // Si es carga inicial, pulsación manual, o si el input estaba vacío, sincronizar la tasa activa
+        if (actualizarInputActivo || !tasaBCV) {
+          setTasaBCV(data.usdOficial || data.rate);
+        }
       }
     } catch (err) {
-      console.error('Error al consultar BCV:', err);
+      console.error('Error al consultar tasas:', err);
     } finally {
       setCargandoBCV(false);
     }
   };
 
-  // Consultar tasa al iniciar la aplicación
+  // Consultar tasas al iniciar, al regresar a la pestaña (focus) y automáticamente cada 10 minutos
   useEffect(() => {
-    cargarTasaBCV();
+    cargarTasaBCV(true);
+
+    // Auto-actualizar silenciosamente al volver a la pestaña o desbloquear el teléfono
+    const handleFocus = () => {
+      cargarTasaBCV(false);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Intervalo de sondeo cada 10 minutos para capturar los nuevos cortes (9:00 AM y 1:00 PM)
+    const interval = setInterval(() => {
+      cargarTasaBCV(false);
+    }, 10 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
   }, []);
 
   // Verificar sesión con Supabase Auth

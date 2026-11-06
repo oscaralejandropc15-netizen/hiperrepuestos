@@ -58,9 +58,9 @@ export async function fetchTasaBCV() {
 
     // Si al menos obtuvimos el dólar oficial BCV
     if (bcvUSD && !isNaN(bcvUSD)) {
-      // Si el usuario guardó una tasa manual personalizada para Binance, respetarla o usar el paralelo/referencial
       const customBinance = localStorage.getItem(BINANCE_CUSTOM_KEY);
       const binanceFinal = customBinance ? parseFloat(customBinance) : (paraleloUSD || bcvUSD * 1.12);
+      const fechaParalelo = (Array.isArray(dolaresData) && dolaresData.find(d => d.fuente === 'paralelo')?.fechaActualizacion) || null;
 
       const payload = {
         rate: bcvUSD.toFixed(4),
@@ -69,6 +69,7 @@ export async function fetchTasaBCV() {
         usdParalelo: paraleloUSD ? paraleloUSD.toFixed(4) : (bcvUSD * 1.12).toFixed(4),
         binanceUSDT: binanceFinal ? binanceFinal.toFixed(4) : (bcvUSD * 1.12).toFixed(4),
         fechaActualizacion,
+        fechaParalelo,
         timestamp: Date.now(),
         origen: 'En vivo (BCV + Paralelo / Binance)',
       };

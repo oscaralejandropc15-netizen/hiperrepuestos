@@ -270,6 +270,19 @@ export default function FacturadorForm({
     tieneItemsValidos
   );
 
+  // Formateador amigable de la hora del corte de tasa oficial / mercado
+  const obtenerHoraCorte = () => {
+    const raw = bcvInfo?.fechaParalelo || bcvInfo?.fechaActualizacion;
+    if (!raw) return 'Al Día';
+    try {
+      const fecha = new Date(raw);
+      if (isNaN(fecha.getTime())) return 'Al Día';
+      return fecha.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+      return 'Al Día';
+    }
+  };
+
   return (
     <div className="space-y-5 sm:space-y-6 animate-slide-up pb-12 font-sans">
       {/* Alerta de Error Elegante */}
@@ -304,7 +317,7 @@ export default function FacturadorForm({
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                   </span>
-                  Al Día
+                  Corte: {obtenerHoraCorte()}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 tracking-wide mt-0.5">
