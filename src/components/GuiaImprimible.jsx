@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatVES, formatNumber, parseVenezuelanNumber } from '../lib/formatters';
+import { formatVES, formatUSD, formatNumber, parseVenezuelanNumber } from '../lib/formatters';
 
 export default function GuiaImprimible({
   codigoGuia = 'GD-000001',
@@ -10,16 +10,26 @@ export default function GuiaImprimible({
   totals = { baseImponible: 0, iva: 0, totalUSD: 0, totalBs: 0 },
   observaciones = '',
   condicionPago = 'CONTADO',
-  formaPago = 'DIVISA'
+  formaPago = 'EFECTIVO',
+  tipoDocumento = 'nota_entrega'
 }) {
   const d = fecha ? new Date(fecha) : new Date();
   const dia = String(d.getDate()).padStart(2, '0');
   const mes = String(d.getMonth() + 1).padStart(2, '0');
   const anio = String(d.getFullYear());
 
-  // Extraer número de 6 dígitos del código (ej. GD-000001 -> 000001)
+  // Extraer número correlativo (ej. GD-000001 -> 000001)
   const numFactura = (codigoGuia || '').replace(/^GD-/, '') || '000001';
   const nroControl = `00-${numFactura}`;
+
+  // REGLAS ESTRICTAS DE NEGOCIO:
+  // 1. Efectivo: tipo_documento = 'nota_entrega', sin IVA, sin formato fiscal SENIAT.
+  // 2. Pago Móvil: tipo_documento = 'factura_fiscal', 16% IVA, formato SENIAT.
+  // 3. Cashea: tipo_documento = 'factura_fiscal', IVA sobre nuevo subtotal, pero el 12% va SUMADO al precio unitario (oculto en PDF).
+  // 4. Crédito Tienda: tipo_documento = 'nota_entrega', sin IVA, cliente registrado, pasa a cuentas_cobrar.
+  const esNotaEntrega = tipoDocumento === 'nota_entrega' || formaPago === 'EFECTIVO' || formaPago === 'CREDITO_TIENDA';
+  const esCashea = formaPago === 'CASHEA';
+  const rateClean = parseVenezuelanNumber(tasaBCV) || 1;
 
   return (
     <div 
@@ -50,7 +60,7 @@ export default function GuiaImprimible({
           </div>
         </div>
 
-        {/* Lado Derecho: RIF, Lugar, Fecha y Números Correlativos */}
+        {/* Lado Derecho: RIF, Lugar, Fecha y Título del Documento */}
         <div className="text-right flex flex-col items-end">
           <p className="text-sm font-black font-mono tracking-tight text-slate-900 mb-1">
             RIF: J412654489
@@ -72,14 +82,27 @@ export default function GuiaImprimible({
             </div>
           </div>
 
-          {/* Números Correlativos Oficiales */}
+          {/* Tipo de Documento: FACTURA FISCAL vs NOTA DE ENTREGA */}
           <div className="text-right">
-            <p className="text-base font-black tracking-tight text-slate-900">
-              FACTURA Nº <span className="font-mono text-red-600 tracking-wider">{numFactura}</span>
-            </p>
-            <p className="text-xs font-bold text-slate-700">
-              Nro. de Control <span className="font-mono">{nroControl}</span>
-            </p>
+            {!esNotaEntrega ? (
+              <>
+                <p className="text-base font-black tracking-tight text-slate-900">
+                  FACTURA Nº <span className="font-mono text-red-600 tracking-wider">{numFactura}</span>
+                </p>
+                <p className="text-xs font-bold text-slate-700">
+                  Nro. de Control <span className="font-mono">{nroControl}</span>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-black tracking-tight text-slate-900 uppercase">
+                  NOTA DE ENTREGA Nº <span className="font-mono text-red-600 tracking-wider">{numFactura}</span>
+                </p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  GUÍA DE DESPACHO INTERNO
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -100,7 +123,7 @@ export default function GuiaImprimible({
         <div className="border-b border-slate-900 py-2.5 px-3 min-h-[36px] flex items-center">
           <div className="flex items-center gap-2 w-full leading-normal">
             <span className="font-bold text-slate-900 text-xs whitespace-nowrap flex-shrink-0">
-              Domicilio Fiscal:
+              Domicilio Fiscal / Entrega:
             </span>
             <span className="font-bold text-black uppercase text-xs tracking-wide">
               {cliente.direccion || 'Charallave, Edo. Miranda'}
@@ -140,7 +163,7 @@ export default function GuiaImprimible({
               <label className="flex items-center gap-1">
                 <input 
                   type="checkbox" 
-                  checked={condicionPago === 'CRÉDITO'} 
+                  checked={condicionPago === 'CRÉDITO' || formaPago === 'CREDITO_TIENDA'} 
                   readOnly 
                   className="rounded border-slate-900 text-slate-900 w-3 h-3" 
                 />
@@ -164,39 +187,41 @@ export default function GuiaImprimible({
         <tbody className="divide-y divide-slate-300">
           {items.map((item, idx) => {
             const qty = parseFloat(item.cantidad) || 0;
-            const rateClean = parseVenezuelanNumber(tasaBCV);
-            const rate = rateClean > 0 ? rateClean : 1;
 
             let priceUSD = 0;
-            let priceBs = 0;
-
-            if (item.precio_bs !== undefined && item.precio_bs !== '') {
-              priceBs = parseVenezuelanNumber(item.precio_bs);
-              priceUSD = rate > 0 ? priceBs / rate : 0;
+            if (item.precio_divisa !== undefined && item.precio_divisa !== null && item.precio_divisa !== '') {
+              priceUSD = parseVenezuelanNumber(item.precio_divisa);
+            } else if (item.precio_bs !== undefined && item.precio_bs !== '') {
+              const rawBs = parseVenezuelanNumber(item.precio_bs);
+              priceUSD = rateClean > 0 ? rawBs / rateClean : 0;
             } else {
-              priceUSD = parseVenezuelanNumber(item.precio);
-              priceBs = priceUSD * rate;
+              priceUSD = parseVenezuelanNumber(item.precio ?? item.precio_detal_usd);
             }
 
-            const subBs = qty * priceBs;
+            // REGLA CASHEA: El recargo de Cashea del 12% no se muestra desglosado, sino sumado al precio unitario del producto
+            const factorCashea = esCashea ? 1.12 : 1.00;
+            const unitPriceUSDImpreso = priceUSD * factorCashea;
+            const unitPriceBsImpreso = unitPriceUSDImpreso * rateClean;
+            const subBsImpreso = qty * unitPriceBsImpreso;
 
             return (
               <tr key={idx} className="border-b border-slate-300">
                 <td className="py-2.5 px-2 border-r border-slate-900 text-center font-mono font-bold">{qty}</td>
                 <td className="py-2.5 px-3 border-r border-slate-900 uppercase font-medium">
+                  {item.codigo_corto ? <strong className="font-mono text-black">[{item.codigo_corto}] </strong> : ''}
                   {item.descripcion || '-'}
                 </td>
                 <td className="py-2.5 px-3 border-r border-slate-900 text-right font-mono font-bold">
-                  {formatVES(priceBs)}
+                  {formatVES(unitPriceBsImpreso)}
                 </td>
                 <td className="py-2.5 px-3 text-right font-mono font-black">
-                  {formatVES(subBs)}
+                  {formatVES(subBsImpreso)}
                 </td>
               </tr>
             );
           })}
 
-          {/* Renglones vacíos simulados para emular el talonario oficial si hay pocos ítems */}
+          {/* Renglones vacíos simulados para emular el talonario físico */}
           {items.length < 2 && Array.from({ length: 2 - items.length }).map((_, i) => (
             <tr key={`empty-${i}`} className="border-b border-slate-200 text-slate-200">
               <td className="py-2 border-r border-slate-900 text-center">-</td>
@@ -208,13 +233,13 @@ export default function GuiaImprimible({
         </tbody>
       </table>
 
-      {/* 4. Bloque Inferior: Formas de Pago, Recibí Conforme y Totales SENIAT (Estrictamente en Bolívares) */}
+      {/* 4. Bloque Inferior: Formas de Pago, Recibí Conforme y Totales */}
       <div className="grid grid-cols-12 gap-3 items-stretch text-xs">
         
         {/* Forma de Pago */}
         <div className="col-span-4 border-2 border-slate-900 rounded p-2.5 flex flex-col justify-between">
           <p className="font-extrabold text-[11px] uppercase tracking-wider text-slate-900 border-b border-slate-400 pb-1 mb-2">
-            FORMA DE PAGO
+            MODALIDAD DE PAGO
           </p>
           <div className="grid grid-cols-2 gap-y-2 text-[11px] font-bold">
             <label className="flex items-center gap-1.5">
@@ -222,31 +247,23 @@ export default function GuiaImprimible({
               <span>EFECTIVO</span>
             </label>
             <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={formaPago === 'PUNTO'} readOnly className="rounded" />
-              <span>DÉBITO</span>
-            </label>
-            <label className="flex items-center gap-1.5">
               <input type="checkbox" checked={formaPago === 'PAGO_MOVIL'} readOnly className="rounded" />
               <span>P. MÓVIL</span>
             </label>
             <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={formaPago === 'TRANSFERENCIA'} readOnly className="rounded" />
-              <span>TRANSF.</span>
+              <input type="checkbox" checked={formaPago === 'CASHEA'} readOnly className="rounded" />
+              <span>CASHEA</span>
             </label>
             <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={formaPago === 'BIOPAGO'} readOnly className="rounded" />
-              <span>BIOPAGO</span>
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input 
-                type="checkbox" 
-                checked={['DIVISA', 'ZELLE', 'BINANCE'].includes(formaPago)} 
-                readOnly 
-                className="rounded" 
-              />
-              <span>DIVISA</span>
+              <input type="checkbox" checked={formaPago === 'CREDITO_TIENDA'} readOnly className="rounded" />
+              <span>CRÉDITO</span>
             </label>
           </div>
+          {observaciones && (
+            <div className="mt-2 pt-1 border-t border-slate-300 text-[10px] text-slate-700">
+              <strong>Nota:</strong> {observaciones}
+            </div>
+          )}
         </div>
 
         {/* Firma Recibí Conforme */}
@@ -254,37 +271,83 @@ export default function GuiaImprimible({
           <div className="border-t border-slate-800 pt-1 text-[11px] font-bold text-slate-800">
             Recibí Conforme
           </div>
-          <p className="text-[9px] text-slate-500">Firma y Cédula del Cliente</p>
+          <p className="text-[9px] text-slate-500">Firma y Cédula del Receptor</p>
         </div>
 
-        {/* Desglose de Totales SENIAT (Exacto a la Factura Manual en Bolívares) */}
+        {/* Desglose de Totales SENIAT o Despacho */}
         <div className="col-span-5 border-2 border-slate-900 rounded p-2.5 space-y-1 bg-slate-50">
-          <div className="flex justify-between text-slate-700 text-[11px]">
-            <span>Total Exento Bs.:</span>
-            <span className="font-mono font-bold">0,00</span>
-          </div>
+          {!esNotaEntrega ? (
+            /* FORMATO FISCAL SENIAT (Pago Móvil / Cashea) - SIN DESGLOSAR CASHEA */
+            <>
+              <div className="flex justify-between text-slate-700 text-[11px]">
+                <span>Total Exento Bs.:</span>
+                <span className="font-mono font-bold">0,00</span>
+              </div>
 
-          <div className="flex justify-between text-slate-800 text-[11px]">
-            <span className="font-semibold">Base Imponible Bs.:</span>
-            <span className="font-mono font-bold text-slate-950">
-              {formatVES(totals.baseImponibleBs ?? (totals.baseImponible * (parseVenezuelanNumber(tasaBCV) || 1)))}
-            </span>
-          </div>
+              <div className="flex justify-between text-slate-800 text-[11px]">
+                <span className="font-semibold">Base Imponible Bs.:</span>
+                <span className="font-mono font-bold text-slate-950">
+                  {formatVES(totals.baseImponibleBs ?? (totals.subtotalConCasheaBs || totals.subtotalBs))}
+                </span>
+              </div>
 
-          <div className="flex justify-between text-slate-800 text-[11px]">
-            <span className="font-semibold">I.V.A. 16% Sobre Bs.:</span>
-            <span className="font-mono font-bold text-slate-950">
-              {formatVES(totals.ivaBs ?? (totals.iva * (parseVenezuelanNumber(tasaBCV) || 1)))}
-            </span>
-          </div>
+              <div className="flex justify-between text-slate-800 text-[11px]">
+                <span className="font-semibold">I.V.A. (16.00%) Bs.:</span>
+                <span className="font-mono font-bold text-slate-950">
+                  {formatVES(totals.ivaBs)}
+                </span>
+              </div>
 
-          <div className="flex justify-between border-t-2 border-slate-900 pt-1 text-slate-950">
-            <span className="font-black text-xs sm:text-sm">Monto Total a Pagar Bs.:</span>
-            <span className="font-mono font-black text-sm sm:text-base text-red-700">
-              {formatVES(totals.totalBs)}
-            </span>
-          </div>
+              <div className="flex justify-between border-t-2 border-slate-900 pt-1 text-slate-950">
+                <span className="font-black text-xs sm:text-sm">Monto Total Facturado Bs.:</span>
+                <span className="font-mono font-black text-sm sm:text-base text-red-700">
+                  {formatVES(totals.totalBs)}
+                </span>
+              </div>
+            </>
+          ) : (
+            /* FORMATO NOTA DE ENTREGA (Efectivo / Crédito Tienda) - SIN IVA */
+            <>
+              <div className="flex justify-between text-slate-800 text-[11px]">
+                <span className="font-semibold">Subtotal Mercancía Bs.:</span>
+                <span className="font-mono font-bold text-slate-950">
+                  {formatVES(totals.subtotalBs)}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-slate-700 text-[11px]">
+                <span>I.V.A. (No Sujeto):</span>
+                <span className="font-mono font-bold">0,00</span>
+              </div>
+
+              <div className="flex justify-between border-t-2 border-slate-900 pt-1 text-slate-950">
+                <span className="font-black text-xs sm:text-sm">Total Liquidable Bs.:</span>
+                <span className="font-mono font-black text-sm sm:text-base text-emerald-700">
+                  {formatVES(totals.totalBs)}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-slate-600 text-[10px] pt-0.5">
+                <span>Equivalente Divisa:</span>
+                <span className="font-mono font-bold">{formatUSD(totals.totalUSD)}</span>
+              </div>
+            </>
+          )}
         </div>
+      </div>
+
+      {/* Pie de Página: Imprenta SENIAT (solo en Factura Fiscal) o Pie de Despacho (en Nota de Entrega) */}
+      <div className="mt-3 pt-2 border-t border-slate-400 text-center text-[9px] text-slate-600">
+        {!esNotaEntrega ? (
+          <p>
+            TIP SANTA TERESA, C.A. RIF: J-30089877-0 · Providencia SENIAT/01/00756 de fecha 05/09/2011 ·
+            Factura emitida conforme a las regulaciones del SENIAT.
+          </p>
+        ) : (
+          <p>
+            Documento de control interno y despacho de mercancía en mostrador. Válido para garantía con comprobante de recepción.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -4,10 +4,11 @@ import { supabase } from './lib/supabaseClient';
 import { calculateTotals, parseVenezuelanNumber } from './lib/formatters';
 import { fetchTasaBCV } from './lib/bcvService';
 import FacturadorForm from './components/FacturadorForm';
+import AdminDashboard from './components/AdminDashboard';
 import GuiaImprimible from './components/GuiaImprimible';
 import HistorialPage from './components/HistorialPage';
 import AuthGate from './components/AuthGate';
-import { Wrench, History, LogOut, Printer, Download, ArrowLeft, CheckCircle2, Receipt, Sun, Moon } from 'lucide-react';
+import { Wrench, History, LogOut, Printer, Download, ArrowLeft, CheckCircle2, Receipt, Sun, Moon, Boxes, LayoutDashboard, ShieldCheck } from 'lucide-react';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -26,9 +27,8 @@ export default function App() {
     telefono: '',
     direccion: '',
   });
-  const [items, setItems] = useState([
-    { id: 1, cantidad: 1, descripcion: '', precio: '' },
-  ]);
+  const [items, setItems] = useState([]);
+  const [tipoDocumento, setTipoDocumento] = useState('factura_fiscal');
   const [observaciones, setObservaciones] = useState('');
   const [condicionPago, setCondicionPago] = useState('CONTADO');
   const [formaPago, setFormaPago] = useState('PUNTO');
@@ -156,17 +156,18 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Totales reactivos en tiempo real con soporte para cobro en Bs. o en $
-  const totals = calculateTotals(items, tasaBCV, monedaIngreso);
+  // Totales reactivos en tiempo real con soporte para Cashea (12%), IVA según producto y tipo de documento
+  const totals = calculateTotals(items, tasaBCV, monedaIngreso, formaPago, tipoDocumento);
 
-  // Limpiar y resetear el formulario
+  // Limpiar y resetear el formulario (inicia con carrito vacío)
   const handleLimpiar = () => {
-    setCliente({ nombre: '', documento: '', telefono: '', direccion: '' });
-    setItems([{ id: Date.now(), cantidad: 1, descripcion: '', precio: '', precio_bs: '' }]);
+    setCliente({ id: null, nombre: '', documento: '', telefono: '', direccion: '' });
+    setItems([]);
     setObservaciones('');
     setCondicionPago('CONTADO');
     setFormaPago('PUNTO');
     setMonedaIngreso('VES');
+    setTipoDocumento('factura_fiscal');
     setError(null);
     setVistaImpresion(null);
     setNumeroFacturaManual('');
@@ -186,15 +187,17 @@ export default function App() {
     const itemsValidos = items.filter((it) => {
       const hasDesc = it.descripcion && it.descripcion.trim().length > 0;
       const hasQty = parseFloat(it.cantidad) > 0;
-      const cleanPrice = monedaIngreso === 'VES' 
-        ? parseVenezuelanNumber(it.precio_bs ?? it.precio)
-        : parseVenezuelanNumber(it.precio ?? it.precio_bs);
+      const cleanPrice = it.precio_divisa !== undefined 
+        ? parseVenezuelanNumber(it.precio_divisa)
+        : (monedaIngreso === 'VES' 
+            ? parseVenezuelanNumber(it.precio_bs ?? it.precio)
+            : parseVenezuelanNumber(it.precio ?? it.precio_bs));
       const hasPrice = cleanPrice >= 0;
       return hasDesc && hasQty && hasPrice;
     });
 
     if (itemsValidos.length === 0) {
-      setError('Debes agregar al menos un repuesto con cantidad y precio válido.');
+      setError('Debes agregar al menos un repuesto desde el inventario al carrito.');
       return null;
     }
 
@@ -202,6 +205,46 @@ export default function App() {
     setError(null);
 
     try {
+      // 0. Resolver o vincular cliente en la tabla `clientes`
+      const esCredito = formaPago === 'CREDITO_TIENDA' || condicionPago === 'CRÉDITO' || condicionPago === 'CREDITO';
+
+      let resolvedClienteId = cliente.id || null;
+      if (!resolvedClienteId && cliente.documento?.trim()) {
+        try {
+          const { data: existingClient } = await supabase
+            .from('clientes')
+            .select('id, nombre, limite_credito_usd')
+            .eq('cedula_rif', cliente.documento.trim())
+            .maybeSingle();
+
+          if (existingClient?.id) {
+            resolvedClienteId = existingClient.id;
+          } else if (!esCredito) {
+            // Si es contado, podemos registrarlo sobre la marcha
+            const { data: newClient } = await supabase
+              .from('clientes')
+              .insert({
+                cedula_rif: cliente.documento.trim(),
+                nombre: cliente.nombre.trim(),
+                telefono: cliente.telefono.trim() || null,
+                direccion: cliente.direccion.trim() || null,
+              })
+              .select('id')
+              .maybeSingle();
+            if (newClient?.id) resolvedClienteId = newClient.id;
+          }
+        } catch (cErr) {
+          console.warn('Aviso resolviendo cliente:', cErr);
+        }
+      }
+
+      // REGLA ESTRICTA: Si es Crédito Tienda, se exige que el cliente ya esté registrado en la base de datos
+      if (esCredito && !resolvedClienteId) {
+        setError('⚠️ REGLA DE CRÉDITO: Para otorgar Crédito de Tienda debes seleccionar un cliente registrado previamente en la base de datos.');
+        setLoading(false);
+        return null;
+      }
+
       // 1. Obtener número correlativo (manual personalizado si el usuario lo colocó, o el consecutivo automático)
       let siguienteNumero = null;
       const numManualLimpio = numeroFacturaManual ? String(numeroFacturaManual).trim().replace(/\D/g, '') : '';
@@ -215,21 +258,26 @@ export default function App() {
         siguienteNumero = await obtenerSiguienteNumeroGuia();
       }
 
-      // Guardar cabecera de la factura / guía
+      // Guardar cabecera de la factura / venta
       let insertPayload = {
         numero_guia: siguienteNumero,
+        cliente_id: resolvedClienteId,
         cliente_nombre: cliente.nombre.trim(),
         cliente_documento: cliente.documento.trim(),
         cliente_telefono: cliente.telefono.trim() || null,
         cliente_direccion: cliente.direccion.trim() || null,
         tasa_bcv: rateClean,
-        subtotal_usd: totals.baseImponible,
+        subtotal_usd: totals.subtotalUSD ?? totals.baseImponible,
+        monto_recargo_cashea_usd: totals.recargoCashea || 0,
+        monto_iva_usd: totals.iva,
         iva_usd: totals.iva,
         total_usd: totals.totalUSD,
         total_bs: totals.totalBs,
         observaciones: observaciones.trim() || null,
         condicion_pago: condicionPago,
         forma_pago: formaPago,
+        tipo_documento: tipoDocumento || 'factura_fiscal',
+        estado_pago: esCredito ? 'pendiente' : 'pagado',
       };
 
       let { data: guiaData, error: guiaError } = await supabase
@@ -238,10 +286,14 @@ export default function App() {
         .select()
         .single();
 
-      // Si las columnas condicion_pago o forma_pago no existen aún en Supabase, reintentar sin ellas de forma segura
-      if (guiaError && guiaError.message && (guiaError.message.includes('condicion_pago') || guiaError.message.includes('forma_pago') || guiaError.message.includes('does not exist'))) {
+      // Compatibilidad segura si alguna columna no existiera en Supabase
+      if (guiaError && guiaError.message && (guiaError.message.includes('condicion_pago') || guiaError.message.includes('tipo_documento') || guiaError.message.includes('estado_pago'))) {
         delete insertPayload.condicion_pago;
         delete insertPayload.forma_pago;
+        delete insertPayload.tipo_documento;
+        delete insertPayload.estado_pago;
+        delete insertPayload.monto_recargo_cashea_usd;
+        delete insertPayload.cliente_id;
         const retry = await supabase
           .from('guias_despacho')
           .insert(insertPayload)
@@ -253,39 +305,141 @@ export default function App() {
 
       if (guiaError) throw guiaError;
 
-      // 2. Guardar renglones de la guía con conversión precisa
+      // 2. Guardar renglones de la venta vinculados a productos (el trigger de Postgres descontará el stock)
       const renglones = itemsValidos.map((it) => {
         let priceUSD = 0;
-        if (monedaIngreso === 'VES') {
+        if (it.precio_divisa !== undefined && it.precio_divisa !== null && it.precio_divisa !== '') {
+          priceUSD = parseVenezuelanNumber(it.precio_divisa);
+        } else if (monedaIngreso === 'VES') {
           const bs = parseVenezuelanNumber(it.precio_bs);
           priceUSD = rate > 0 ? bs / rate : 0;
         } else {
-          priceUSD = parseVenezuelanNumber(it.precio);
+          priceUSD = parseVenezuelanNumber(it.precio ?? it.precio_detal_usd);
         }
 
         return {
           guia_id: guiaData.id,
+          producto_id: it.producto_id || null,
           cantidad: parseFloat(it.cantidad),
           descripcion: it.descripcion.trim(),
           precio_unitario_usd: priceUSD,
           subtotal_usd: parseFloat(it.cantidad) * priceUSD,
+          tipo_precio: it.tipo_tarifa || 'detal',
+          costo_unitario_usd: it.costo_usd || 0,
         };
       });
 
-      const { error: itemsError } = await supabase
+      let { error: itemsError } = await supabase
         .from('items_guia')
         .insert(renglones);
 
+      // Si falla por columnas adicionales, reintentar formato base
+      if (itemsError && itemsError.message && (itemsError.message.includes('producto_id') || itemsError.message.includes('tipo_precio'))) {
+        const renglonesBase = itemsValidos.map((it) => {
+          const priceUSD = it.precio_divisa || parseVenezuelanNumber(it.precio) || 0;
+          return {
+            guia_id: guiaData.id,
+            cantidad: parseFloat(it.cantidad),
+            descripcion: it.descripcion.trim(),
+            precio_unitario_usd: priceUSD,
+            subtotal_usd: parseFloat(it.cantidad) * priceUSD,
+          };
+        });
+        const retryItems = await supabase.from('items_guia').insert(renglonesBase);
+        itemsError = retryItems.error;
+      }
+
       if (itemsError) throw itemsError;
+
+      // 3. Registrar venta en las nuevas tablas contables 'ventas' y 'ventas_items'
+      let ventaId = null;
+      try {
+        const ventaPayload = {
+          numero_control: String(siguienteNumero),
+          tipo_documento: tipoDocumento || 'factura_fiscal',
+          metodo_pago: formaPago || 'Efectivo',
+          subtotal_usd: totals.subtotalUSD ?? totals.baseImponible,
+          recargo_cashea_usd: totals.recargoCashea || 0,
+          monto_iva_usd: totals.iva,
+          total_usd: totals.totalUSD,
+          tasa_bcv: rateClean,
+          total_bs: totals.totalBs,
+          estado: esCredito ? 'pendiente' : 'pagado',
+          cliente_id: resolvedClienteId,
+          cliente_nombre: cliente.nombre.trim(),
+          cliente_cedula_rif: cliente.documento.trim(),
+          cliente_telefono: cliente.telefono.trim() || null,
+          observaciones: observaciones.trim() || null,
+        };
+
+        const { data: vData, error: vErr } = await supabase
+          .from('ventas')
+          .insert(ventaPayload)
+          .select()
+          .single();
+
+        if (!vErr && vData?.id) {
+          ventaId = vData.id;
+          const vItems = itemsValidos.map((it) => {
+            let priceUSD = 0;
+            if (it.precio_divisa !== undefined && it.precio_divisa !== null && it.precio_divisa !== '') {
+              priceUSD = parseVenezuelanNumber(it.precio_divisa);
+            } else if (monedaIngreso === 'VES') {
+              const bs = parseVenezuelanNumber(it.precio_bs);
+              priceUSD = rate > 0 ? bs / rate : 0;
+            } else {
+              priceUSD = parseVenezuelanNumber(it.precio ?? it.precio_detal_usd);
+            }
+
+            return {
+              venta_id: vData.id,
+              producto_id: it.producto_id || null,
+              codigo_corto: it.codigo_corto || null,
+              referencia: it.referencia || null,
+              descripcion: it.descripcion.trim(),
+              marca: it.marca || null,
+              cantidad: parseFloat(it.cantidad) || 1,
+              precio_unitario_usd: priceUSD,
+              aplica_iva: it.aplica_iva !== false,
+              subtotal_usd: (parseFloat(it.cantidad) || 1) * priceUSD,
+              costo_unitario_usd: it.costo_usd || 0,
+              tipo_tarifa: it.tipo_tarifa || 'detal',
+            };
+          });
+
+          await supabase.from('ventas_items').insert(vItems);
+        }
+      } catch (errVentas) {
+        console.warn('Aviso guardando en tabla ventas:', errVentas);
+      }
+
+      // 4. Si la condición de pago es a CRÉDITO, registrar automáticamente en cuentas_cobrar
+      if (esCredito) {
+        try {
+          await supabase.from('cuentas_cobrar').insert({
+            guia_id: guiaData.id,
+            venta_id: ventaId,
+            cliente_id: resolvedClienteId,
+            monto_total_usd: totals.totalUSD,
+            monto_abonado_usd: 0,
+            saldo_pendiente_usd: totals.totalUSD,
+            estado: 'pendiente',
+            notas: `Crédito originado en venta ${guiaData.codigo_guia || siguienteNumero}`,
+          });
+        } catch (cxcErr) {
+          console.warn('Aviso registrando cuenta por cobrar:', cxcErr);
+        }
+      }
 
       const guiaCompleta = {
         ...guiaData,
         items: itemsValidos,
         condicion_pago: condicionPago,
         forma_pago: formaPago,
+        tipo_documento: tipoDocumento,
       };
 
-      setSuccessNotif(`¡Factura ${guiaData.codigo_guia} guardada exitosamente!`);
+      setSuccessNotif(`¡Venta ${guiaData.codigo_guia} guardada exitosamente!`);
       setTimeout(() => setSuccessNotif(null), 4000);
       setNumeroFacturaManual('');
       consultarProximoCorrelativo();
@@ -293,7 +447,7 @@ export default function App() {
       return guiaCompleta;
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Error al guardar la factura en Supabase.');
+      setError(err.message || 'Error al guardar la venta en Supabase.');
       return null;
     } finally {
       setLoading(false);
@@ -332,6 +486,7 @@ export default function App() {
       observaciones,
       condicionPago,
       formaPago,
+      tipoDocumento: guia.tipo_documento || tipoDocumento,
     };
 
     setVistaImpresion(payloadVista);
@@ -392,7 +547,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-100 dark:bg-[#06080F] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Barra de Encabezado Superior Responsiva con Glassmorphism */}
       <header className="no-print bg-white/95 dark:bg-[#0B0F19]/85 backdrop-blur-xl border-b border-slate-200 dark:border-white/[0.08] sticky top-0 z-40 shadow-sm dark:shadow-xl dark:shadow-black/40">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
+        <div className="w-full max-w-[98vw] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
           {/* Logo y Nombre del Negocio */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <div className="relative group">
@@ -418,34 +573,62 @@ export default function App() {
             </div>
           </div>
 
-          {/* Pestañas de Navegación Rápida y Acciones */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
-            {/* Navegación Facturador / Historial */}
-            <div className="flex bg-slate-200/80 dark:bg-[#06080F]/90 p-0.5 sm:p-1 rounded-2xl border border-slate-300 dark:border-white/[0.08] shadow-inner">
+          {/* Pestañas de Navegación Rápida y Acciones Responsivas */}
+          <div className="flex items-center gap-1 sm:gap-2.5 flex-shrink-0">
+            {/* Navegación Punto de Venta / Administración / Historial */}
+            <div className="flex bg-slate-200/80 dark:bg-[#06080F]/90 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl border border-slate-300 dark:border-white/[0.08] shadow-inner">
               <button
                 type="button"
                 onClick={() => { setVista('facturador'); setVistaImpresion(null); }}
-                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 min-h-[36px] sm:min-h-[38px] cursor-pointer ${
+                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 min-h-[34px] sm:min-h-[38px] cursor-pointer ${
                   vista === 'facturador' && !vistaImpresion
                     ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-900/40 scale-[1.02]'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/[0.04]'
                 }`}
+                title="Punto de Venta"
               >
-                <Receipt className="w-3.5 h-3.5" />
-                <span className="tracking-wide">Facturar</span>
+                <Receipt className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden sm:inline tracking-wide">Punto de Venta</span>
+                <span className="sm:hidden tracking-tight">Venta</span>
+                {items.length > 0 && (
+                  <span className={`text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.2 rounded-full ${
+                    vista === 'facturador' && !vistaImpresion
+                      ? 'bg-white text-red-700'
+                      : 'bg-red-500 text-white'
+                  }`}>
+                    {items.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setVista('admin'); setVistaImpresion(null); }}
+                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 min-h-[34px] sm:min-h-[38px] cursor-pointer ${
+                  vista === 'admin' && !vistaImpresion
+                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-900/40 scale-[1.02]'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/[0.04]'
+                }`}
+                title="Administración de Inventario"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden sm:inline tracking-wide">Administración</span>
+                <span className="sm:hidden tracking-tight">Admin</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => { setVista('historial'); setVistaImpresion(null); }}
-                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 min-h-[36px] sm:min-h-[38px] cursor-pointer ${
+                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 min-h-[34px] sm:min-h-[38px] cursor-pointer ${
                   vista === 'historial' && !vistaImpresion
                     ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-900/40 scale-[1.02]'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/[0.04]'
                 }`}
+                title="Historial de Ventas"
               >
-                <History className="w-3.5 h-3.5" />
-                <span className="tracking-wide">Historial</span>
+                <History className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden sm:inline tracking-wide">Historial</span>
+                <span className="sm:hidden tracking-tight">Hist.</span>
               </button>
             </div>
 
@@ -453,8 +636,8 @@ export default function App() {
             <button
               type="button"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={theme === 'dark' ? 'Cambiar a Modo Claro (Fácil de leer para la vista)' : 'Cambiar a Modo Oscuro'}
-              className={`inline-flex items-center justify-center p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl text-xs font-bold transition-all duration-200 border min-h-[36px] sm:min-h-[38px] min-w-[36px] cursor-pointer shadow-sm active:scale-95 ${
+              title={theme === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
+              className={`inline-flex items-center justify-center p-1.5 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl text-xs font-bold transition-all duration-200 border min-h-[34px] sm:min-h-[38px] min-w-[34px] sm:min-w-[38px] cursor-pointer shadow-sm active:scale-95 ${
                 theme === 'dark'
                   ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
                   : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'
@@ -462,12 +645,12 @@ export default function App() {
             >
               {theme === 'dark' ? (
                 <>
-                  <Sun className="w-4 h-4 text-amber-400" />
+                  <Sun className="w-4 h-4 text-amber-400 flex-shrink-0" />
                   <span className="hidden md:inline font-bold ml-1.5">Claro</span>
                 </>
               ) : (
                 <>
-                  <Moon className="w-4 h-4 text-slate-700" />
+                  <Moon className="w-4 h-4 text-slate-700 flex-shrink-0" />
                   <span className="hidden md:inline font-bold ml-1.5">Oscuro</span>
                 </>
               )}
@@ -487,14 +670,14 @@ export default function App() {
               </span>
             </div>
 
-            {/* Botón de Cerrar Sesión Ultra Visible y Ergonómico para Teléfonos y PC */}
+            {/* Botón de Cerrar Sesión Responsivo */}
             <button
               onClick={() => supabase.auth.signOut()}
               title="Cerrar Sesión del Sistema"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-black bg-rose-50 hover:bg-rose-600 dark:bg-rose-500/15 dark:hover:bg-rose-600 text-rose-700 hover:text-white dark:text-rose-300 dark:hover:text-white border border-rose-300/80 dark:border-rose-500/30 shadow-sm transition-all duration-200 active:scale-95 min-h-[36px] sm:min-h-[38px] cursor-pointer flex-shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 p-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-black bg-rose-50 hover:bg-rose-600 dark:bg-rose-500/15 dark:hover:bg-rose-600 text-rose-700 hover:text-white dark:text-rose-300 dark:hover:text-white border border-rose-300/80 dark:border-rose-500/30 shadow-sm transition-all duration-200 active:scale-95 min-h-[34px] sm:min-h-[38px] min-w-[34px] cursor-pointer flex-shrink-0"
             >
               <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-rose-600 dark:text-rose-400 group-hover:text-white" />
-              <span className="text-[11px] sm:text-xs font-extrabold tracking-wide">Salir</span>
+              <span className="hidden sm:inline text-xs font-extrabold tracking-wide">Salir</span>
             </button>
           </div>
         </div>
@@ -508,8 +691,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Contenedor Principal Adaptativo */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 w-full">
+      {/* Contenedor Principal Adaptativo Edge-to-Edge */}
+      <main className="w-full max-w-[98vw] mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-5">
         {vistaImpresion ? (
           /* Modo Vista Previa y Descarga de Guía */
           <div className="space-y-4 sm:space-y-6">
@@ -557,8 +740,17 @@ export default function App() {
             }}
             onVerGuia={handleSelectHistorial}
           />
+        ) : vista === 'admin' ? (
+          /* Modo Panel Administrativo (Dueño) */
+          <AdminDashboard
+            tasaBCV={tasaBCV}
+            onVolverAlMostrador={() => {
+              setVista('facturador');
+              consultarProximoCorrelativo();
+            }}
+          />
         ) : (
-          /* Modo Facturador de Mostrador */
+          /* Modo Punto de Venta de Mostrador */
           <FacturadorForm
             cliente={cliente}
             setCliente={setCliente}
@@ -579,7 +771,8 @@ export default function App() {
             setMonedaIngreso={setMonedaIngreso}
             proximoCorrelativo={proximoCorrelativo}
             numeroFacturaManual={numeroFacturaManual}
-            setNumeroFacturaManual={setNumeroFacturaManual}
+            tipoDocumento={tipoDocumento}
+            setTipoDocumento={setTipoDocumento}
             totals={totals}
             onGuardar={handleGuardar}
             onImprimir={handleEmitirEImprimir}

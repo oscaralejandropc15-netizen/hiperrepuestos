@@ -106,50 +106,88 @@ export function formatDate(dateString) {
 }
 
 /**
- * Cálculos matemáticos de facturación con IVA del 16%
- * Soporta ingreso tanto en Bolívares (VES) como en Dólares (USD) con puntos de miles y comas
+ * Cálculos matemáticos de cierre de venta:
+ * 1. Efectivo: tipo_documento = 'nota_entrega', 0% IVA.
+ * 2. Pago Móvil: tipo_documento = 'factura_fiscal', 16% IVA sobre subtotal.
+ * 3. Cashea: 12% recargo sobre subtotal (monto_recargo_cashea_usd), 16% IVA sobre nuevo subtotal (subtotal + 12%).
+ * 4. Crédito Tienda: tipo_documento = 'nota_entrega', 0% IVA.
  */
-export function calculateTotals(items = [], tasaBCV = 1, monedaIngreso = 'USD') {
+export function calculateTotals(items = [], tasaBCV = 1, monedaIngreso = 'USD', formaPago = 'EFECTIVO', tipoDocumento = 'nota_entrega') {
   const rateClean = parseVenezuelanNumber(tasaBCV);
   const rate = rateClean > 0 ? rateClean : 1;
 
   let baseImponibleUSD = 0;
-  let baseImponibleBs = 0;
 
   items.forEach((item) => {
     const qty = parseFloat(item.cantidad) || 0;
-    let priceUSD = 0;
-    let priceBs = 0;
+    if (qty <= 0) return;
 
-    if (monedaIngreso === 'VES') {
-      // Priorizar precio en Bolívares introducido directamente (soporta puntos de miles y coma)
+    let priceUSD = 0;
+
+    // Si el item viene de la selección de inventario con precio_divisa o precio_detal_usd
+    if (item.precio_divisa !== undefined && item.precio_divisa !== null && item.precio_divisa !== '') {
+      priceUSD = parseVenezuelanNumber(item.precio_divisa);
+    } else if (monedaIngreso === 'VES') {
       if (item.precio_bs !== undefined && item.precio_bs !== '') {
-        priceBs = parseVenezuelanNumber(item.precio_bs);
+        const priceBs = parseVenezuelanNumber(item.precio_bs);
         priceUSD = rate > 0 ? priceBs / rate : 0;
       } else {
         priceUSD = parseVenezuelanNumber(item.precio);
-        priceBs = priceUSD * rate;
       }
     } else {
-      // Priorizar precio en Dólares ($)
-      priceUSD = parseVenezuelanNumber(item.precio);
-      priceBs = priceUSD * rate;
+      priceUSD = parseVenezuelanNumber(item.precio ?? item.precio_detal_usd);
     }
 
     baseImponibleUSD += qty * priceUSD;
-    baseImponibleBs += qty * priceBs;
   });
 
-  const ivaUSD = baseImponibleUSD * 0.16;
-  const ivaBs = baseImponibleBs * 0.16;
+  const subtotalUSD = baseImponibleUSD;
 
-  const totalUSD = baseImponibleUSD + ivaUSD;
-  const totalBs = baseImponibleBs + ivaBs;
+  const esEfectivo = formaPago === 'EFECTIVO';
+  const esPagoMovil = formaPago === 'PAGO_MOVIL';
+  const esCashea = formaPago === 'CASHEA';
+  const esCreditoTienda = formaPago === 'CREDITO_TIENDA' || formaPago === 'CRÉDITO' || formaPago === 'CREDITO';
+
+  // Recargo Cashea (12% si la forma de pago es CASHEA)
+  const recargoCasheaUSD = esCashea ? subtotalUSD * 0.12 : 0;
+  const nuevoSubtotalCasheaUSD = subtotalUSD + recargoCasheaUSD;
+
+  // IVA: 16% para Pago Móvil, Cashea y Crédito Tienda (Fiados)
+  // Solo Efectivo (nota de entrega directa) se mantiene al 0% IVA
+  let ivaUSD = 0;
+  if (esPagoMovil || esCreditoTienda) {
+    ivaUSD = subtotalUSD * 0.16;
+  } else if (esCashea) {
+    ivaUSD = nuevoSubtotalCasheaUSD * 0.16;
+  } else if (tipoDocumento === 'factura_fiscal') {
+    ivaUSD = subtotalUSD * 0.16;
+  } else {
+    ivaUSD = 0;
+  }
+
+  const totalUSD = (esCashea ? nuevoSubtotalCasheaUSD : subtotalUSD) + ivaUSD;
+
+  // Equivalentes en Bolívares a tasa oficial BCV
+  const subtotalBs = subtotalUSD * rate;
+  const nuevoSubtotalCasheaBs = nuevoSubtotalCasheaUSD * rate;
+  const baseImponibleBs = (esCashea ? nuevoSubtotalCasheaUSD : baseImponibleUSD) * rate;
+  const recargoCasheaBs = recargoCasheaUSD * rate;
+  const ivaBs = ivaUSD * rate;
+  const totalBs = totalUSD * rate;
 
   return {
-    baseImponible: Math.round(baseImponibleUSD * 100) / 100,
+    subtotalUSD: Math.round(subtotalUSD * 100) / 100,
+    subtotalBs: Math.round(subtotalBs * 100) / 100,
+    subtotalConCasheaUSD: Math.round(nuevoSubtotalCasheaUSD * 100) / 100,
+    subtotalConCasheaBs: Math.round(nuevoSubtotalCasheaBs * 100) / 100,
+    baseImponible: Math.round((esCashea ? nuevoSubtotalCasheaUSD : baseImponibleUSD) * 100) / 100,
     baseImponibleBs: Math.round(baseImponibleBs * 100) / 100,
+    recargoCashea: Math.round(recargoCasheaUSD * 100) / 100,
+    recargoCasheaUSD: Math.round(recargoCasheaUSD * 100) / 100,
+    recargoCasheaBs: Math.round(recargoCasheaBs * 100) / 100,
     iva: Math.round(ivaUSD * 100) / 100,
+    montoIvaUSD: Math.round(ivaUSD * 100) / 100,
+    ivaUSD: Math.round(ivaUSD * 100) / 100,
     ivaBs: Math.round(ivaBs * 100) / 100,
     totalUSD: Math.round(totalUSD * 100) / 100,
     totalBs: Math.round(totalBs * 100) / 100,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabaseClient';
 import { formatUSD, formatVES, formatDate } from '../lib/formatters';
 import { Search, RotateCcw, Eye, X, FileText, AlertCircle } from 'lucide-react';
@@ -44,8 +45,8 @@ export default function HistorialGuias({ onSelectGuia, onClose }) {
     return codigo.includes(term) || cliente.includes(term) || doc.includes(term);
   });
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-fade-in">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-fade-in">
       <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[94vh] sm:max-h-[90vh]">
         {/* Cabecera del Modal */}
         <div className="p-3.5 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900">
@@ -158,4 +159,6 @@ export default function HistorialGuias({ onSelectGuia, onClose }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 }
