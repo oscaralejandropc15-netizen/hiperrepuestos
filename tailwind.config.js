@@ -32,6 +32,7 @@ export default {
       },
       animation: {
         'fade-in': 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'slide-right': 'slideRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards',
         'pulse-subtle': 'pulseSubtle 2.5s infinite ease-in-out',
         'shimmer': 'shimmer 2.5s infinite linear',
       },
@@ -39,6 +40,10 @@ export default {
         fadeIn: {
           from: { opacity: '0', transform: 'translateY(6px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideRight: {
+          from: { transform: 'translateX(-100%)' },
+          to: { transform: 'translateX(0)' },
         },
         pulseSubtle: {
           '0%, 100%': { opacity: '1' },
