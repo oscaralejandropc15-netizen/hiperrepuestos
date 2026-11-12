@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
 import { supabase } from './lib/supabaseClient';
-import { calculateTotals, parseVenezuelanNumber } from './lib/formatters';
+import { calculateTotals, parseVenezuelanNumber, generarVariantesCedula } from './lib/formatters';
 import { fetchTasaBCV } from './lib/bcvService';
 import FacturadorForm from './components/FacturadorForm';
 import AdminDashboard from './components/AdminDashboard';
@@ -205,36 +205,57 @@ export default function App() {
     setError(null);
 
     try {
-      // 0. Resolver o vincular cliente en la tabla `clientes`
+      // 0. Registrar permanentemente al cliente en la base de datos para futuras ventas
       const esCredito = formaPago === 'CREDITO_TIENDA' || condicionPago === 'CRÉDITO' || condicionPago === 'CREDITO';
-
       let resolvedClienteId = cliente.id || null;
-      if (!resolvedClienteId && cliente.documento?.trim()) {
+
+      if (cliente.documento?.trim() && cliente.nombre?.trim()) {
+        const docLimpio = cliente.documento.trim();
+        const nombreLimpio = cliente.nombre.trim();
+        const telefonoLimpio = cliente.telefono?.trim() || null;
+        const direccionLimpia = cliente.direccion?.trim() || null;
+
         try {
-          const { data: existingClient } = await supabase
+          const variantes = generarVariantesCedula(docLimpio);
+          const orClause = variantes.map(v => `cedula_rif.eq.${v}`).join(',');
+          const { data: exist } = await supabase
             .from('clientes')
-            .select('id, nombre, limite_credito_usd')
-            .eq('cedula_rif', cliente.documento.trim())
+            .select('id, cedula_rif')
+            .or(orClause)
+            .limit(1)
             .maybeSingle();
 
-          if (existingClient?.id) {
-            resolvedClienteId = existingClient.id;
-          } else if (!esCredito) {
-            // Si es contado, podemos registrarlo sobre la marcha
-            const { data: newClient } = await supabase
+          if (exist?.id) {
+            resolvedClienteId = exist.id;
+            // Actualizar datos del cliente (nombre, teléfono, dirección) si cambiaron
+            await supabase
               .from('clientes')
-              .insert({
-                cedula_rif: cliente.documento.trim(),
-                nombre: cliente.nombre.trim(),
-                telefono: cliente.telefono.trim() || null,
-                direccion: cliente.direccion.trim() || null,
+              .update({
+                nombre: nombreLimpio,
+                telefono: telefonoLimpio,
+                direccion: direccionLimpia,
+                updated_at: new Date().toISOString()
               })
+              .eq('id', exist.id);
+          } else {
+            // Guardar cliente nuevo en `clientes` para que quede registrado permanentemente
+            const { data: nuevoClient } = await supabase
+              .from('clientes')
+              .upsert({
+                cedula_rif: docLimpio,
+                nombre: nombreLimpio,
+                telefono: telefonoLimpio,
+                direccion: direccionLimpia,
+              }, { onConflict: 'cedula_rif' })
               .select('id')
               .maybeSingle();
-            if (newClient?.id) resolvedClienteId = newClient.id;
+
+            if (nuevoClient?.id) {
+              resolvedClienteId = nuevoClient.id;
+            }
           }
         } catch (cErr) {
-          console.warn('Aviso resolviendo cliente:', cErr);
+          console.warn('Aviso registrando cliente en Supabase:', cErr);
         }
       }
 

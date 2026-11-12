@@ -29,7 +29,7 @@ import {
   Sparkles,
   SlidersHorizontal
 } from 'lucide-react';
-import { formatUSD, formatVES, formatNumber, parseVenezuelanNumber } from '../lib/formatters';
+import { formatUSD, formatVES, formatNumber, parseVenezuelanNumber, generarVariantesCedula } from '../lib/formatters';
 import { obtenerSublineasParaLinea } from '../lib/clasificacionesRepuestos';
 import { obtenerFotoRepuesto } from '../lib/repuestosImagenes';
 import { desglosarModelosVehiculo } from '../lib/vehiculosMarcas';
@@ -286,11 +286,13 @@ export default function FacturadorForm({
     return obtenerSublineasParaLinea(filtroLinea, productosEncontrados);
   }, [filtroLinea, productosEncontrados]);
 
-  // Selector rápido de clientes registrados
+  // Selector rápido y registro de clientes
   const [clienteEncontrado, setClienteEncontrado] = useState(null);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [listaClientesRegistrados, setListaClientesRegistrados] = useState([]);
   const [mostrarListaClientes, setMostrarListaClientes] = useState(false);
+  const [guardandoClienteManual, setGuardandoClienteManual] = useState(false);
+  const [clienteGuardadoExitoso, setClienteGuardadoExitoso] = useState(false);
   const clientSelectorRef = useRef(null);
   const inputBusquedaRef = useRef(null);
 
@@ -563,10 +565,11 @@ export default function FacturadorForm({
     }
   };
 
-  // Manejador inteligente de Cédula/RIF
+  // Manejador inteligente y ultrarrápido de Cédula/RIF
   useEffect(() => {
     const doc = (cliente.documento || '').trim();
-    if (doc.length < 5) {
+    const soloDigitos = doc.replace(/\D/g, '');
+    if (soloDigitos.length < 5) {
       setClienteEncontrado(null);
       return;
     }
@@ -574,34 +577,98 @@ export default function FacturadorForm({
     const timer = setTimeout(async () => {
       setBuscandoCliente(true);
       try {
-        const { data } = await supabase
+        const variantes = generarVariantesCedula(doc);
+        const orClause = variantes.map(v => `cedula_rif.eq.${v}`).join(',');
+
+        // 1. Buscar en la tabla principal de clientes
+        const { data: clientData } = await supabase
           .from('clientes')
           .select('*')
-          .eq('cedula_rif', doc)
+          .or(orClause)
+          .limit(1)
           .maybeSingle();
 
-        if (data) {
-          setClienteEncontrado(data);
+        if (clientData && clientData.nombre) {
+          setClienteEncontrado(clientData);
           setCliente(prev => ({
             ...prev,
-            id: data.id,
-            nombre: prev.nombre || data.nombre || '',
-            telefono: prev.telefono || data.telefono || '',
-            direccion: prev.direccion || data.direccion || ''
+            id: clientData.id,
+            nombre: clientData.nombre,
+            telefono: clientData.telefono || prev.telefono || '',
+            direccion: clientData.direccion || prev.direccion || ''
           }));
-        } else {
-          setClienteEncontrado(null);
-          setCliente(prev => ({ ...prev, id: null }));
+          return;
         }
+
+        // 2. Si aún no está en clientes, buscar en ventas anteriores (guias_despacho)
+        const orGuias = variantes.map(v => `cliente_documento.eq.${v}`).join(',');
+        const { data: guiaData } = await supabase
+          .from('guias_despacho')
+          .select('cliente_nombre, cliente_telefono, cliente_direccion, cliente_documento')
+          .or(orGuias)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (guiaData && guiaData.cliente_nombre) {
+          const clienteRecuperado = {
+            id: null,
+            cedula_rif: guiaData.cliente_documento || doc,
+            nombre: guiaData.cliente_nombre,
+            telefono: guiaData.cliente_telefono || '',
+            direccion: guiaData.cliente_direccion || ''
+          };
+          setClienteEncontrado(clienteRecuperado);
+          setCliente(prev => ({
+            ...prev,
+            id: null,
+            nombre: guiaData.cliente_nombre,
+            telefono: guiaData.cliente_telefono || prev.telefono || '',
+            direccion: guiaData.cliente_direccion || prev.direccion || ''
+          }));
+          return;
+        }
+
+        // No encontrado en ningún registro
+        setClienteEncontrado(null);
+        setCliente(prev => ({ ...prev, id: null }));
       } catch (err) {
         console.warn('Error consultando cliente:', err);
       } finally {
         setBuscandoCliente(false);
       }
-    }, 350);
+    }, 280);
 
     return () => clearTimeout(timer);
   }, [cliente.documento]);
+
+  const registrarClienteManual = async () => {
+    if (!cliente.documento?.trim() || !cliente.nombre?.trim()) return;
+    setGuardandoClienteManual(true);
+    try {
+      const { data } = await supabase
+        .from('clientes')
+        .upsert({
+          cedula_rif: cliente.documento.trim(),
+          nombre: cliente.nombre.trim(),
+          telefono: cliente.telefono?.trim() || null,
+          direccion: cliente.direccion?.trim() || null
+        }, { onConflict: 'cedula_rif' })
+        .select('*')
+        .maybeSingle();
+
+      if (data) {
+        setClienteEncontrado(data);
+        setCliente(prev => ({ ...prev, id: data.id }));
+        setClienteGuardadoExitoso(true);
+        setTimeout(() => setClienteGuardadoExitoso(false), 3500);
+      }
+    } catch (e) {
+      console.warn('Error al registrar cliente:', e);
+    } finally {
+      setGuardandoClienteManual(false);
+    }
+  };
 
   const handleDocumentoChange = (raw) => {
     const prev = cliente.documento || '';
@@ -1260,15 +1327,50 @@ export default function FacturadorForm({
         {/* FILA 1: DATOS DEL CLIENTE (RECEPTOR) EN FORMATO HORIZONTAL HOLGADO */}
         <div className="space-y-3 pb-4 border-b border-slate-100 dark:border-white/[0.06]">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-            <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <User className="w-4 h-4 text-red-600" />
-              <span>Datos del Cliente / Receptor</span>
-              {clienteEncontrado && (
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-sans ml-2">
-                  (Cliente Registrado: {clienteEncontrado.nombre})
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <User className="w-4 h-4 text-red-600" />
+                <span>Datos del Cliente / Receptor</span>
+              </span>
+
+              {/* Indicadores inteligentes de estado del cliente */}
+              {buscandoCliente && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 animate-pulse border border-blue-200 dark:border-blue-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
+                  Buscando cédula...
                 </span>
               )}
-            </span>
+
+              {clienteEncontrado && !buscandoCliente && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-700 dark:text-emerald-300 shadow-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>✓ Registrado: <strong className="font-extrabold">{clienteEncontrado.nombre}</strong> (Datos cargados)</span>
+                </span>
+              )}
+
+              {!clienteEncontrado && !buscandoCliente && (cliente.documento || '').replace(/\D/g, '').length >= 5 && (cliente.nombre || '').trim().length >= 2 && (
+                <div className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    ℹ️ Nuevo: Se guardará con la venta
+                  </span>
+                  <button
+                    type="button"
+                    onClick={registrarClienteManual}
+                    disabled={guardandoClienteManual}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
+                    title="Guardar este cliente en la base de datos ahora mismo"
+                  >
+                    {guardandoClienteManual ? 'Guardando...' : '+ Registrar Ahora'}
+                  </button>
+                </div>
+              )}
+
+              {clienteGuardadoExitoso && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-sm">
+                  ✓ ¡Cliente registrado con éxito!
+                </span>
+              )}
+            </div>
 
             {/* Selector de Clientes Registrados */}
             <div ref={clientSelectorRef} className="relative">

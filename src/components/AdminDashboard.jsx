@@ -2529,35 +2529,6 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
           {/* =================================================================== */}
           {(tabActiva === 'lineas' || tabActiva === 'clasificaciones') && (
             <div className="space-y-4">
-              
-              {/* Barra de Sub-Navegación Holgada de Clasificaciones */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 dark:border-white/[0.08]">
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('lineas')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-blue-600 text-white shadow-md transition-all cursor-pointer"
-                >
-                  <Layers className="w-4 h-4" />
-                  <span>1. Líneas y Sublíneas ({listaLineas.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('marcas')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
-                >
-                  <Tag className="w-4 h-4 text-emerald-500" />
-                  <span>2. Marcas de Repuestos ({listaMarcas.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('modelos')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
-                >
-                  <Car className="w-4 h-4 text-purple-500" />
-                  <span>3. Modelos de Vehículos ({listaModelos.length})</span>
-                </button>
-              </div>
-
               {/* Cabecera de la sección */}
               <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[#0B0F19]/95 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -2927,35 +2898,6 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
           {/* =================================================================== */}
           {tabActiva === 'marcas' && (
             <div className="space-y-4">
-              
-              {/* Barra de Sub-Navegación Holgada de Clasificaciones */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 dark:border-white/[0.08]">
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('lineas')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
-                >
-                  <Layers className="w-4 h-4 text-blue-500" />
-                  <span>1. Líneas y Sublíneas ({listaLineas.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('marcas')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-emerald-600 text-white shadow-md transition-all cursor-pointer"
-                >
-                  <Tag className="w-4 h-4" />
-                  <span>2. Marcas de Repuestos ({listaMarcas.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('modelos')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
-                >
-                  <Car className="w-4 h-4 text-purple-500" />
-                  <span>3. Modelos de Vehículos ({listaModelos.length})</span>
-                </button>
-              </div>
-
               {/* Cabecera de la sección */}
               <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[#0B0F19]/95 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -3155,35 +3097,6 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
           {/* =================================================================== */}
           {tabActiva === 'modelos' && (
             <div className="space-y-4">
-              
-              {/* Barra de Sub-Navegación Holgada de Clasificaciones */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 dark:border-white/[0.08]">
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('lineas')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
-                >
-                  <Layers className="w-4 h-4 text-blue-500" />
-                  <span>1. Líneas y Sublíneas ({listaLineas.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('marcas')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
-                >
-                  <Tag className="w-4 h-4 text-emerald-500" />
-                  <span>2. Marcas de Repuestos ({listaMarcas.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTabActiva('modelos')}
-                  className="px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-purple-600 text-white shadow-md transition-all cursor-pointer"
-                >
-                  <Car className="w-4 h-4" />
-                  <span>3. Modelos de Vehículos ({listaModelos.length})</span>
-                </button>
-              </div>
-
               {/* Cabecera de la sección */}
               <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[#0B0F19]/95 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">

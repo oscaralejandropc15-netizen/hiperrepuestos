@@ -193,3 +193,29 @@ export function calculateTotals(items = [], tasaBCV = 1, monedaIngreso = 'USD', 
     totalBs: Math.round(totalBs * 100) / 100,
   };
 }
+
+/**
+ * Genera todas las variantes posibles de formato para una Cédula o RIF en Venezuela
+ * Permite encontrar un cliente sin importar si se guardó con o sin puntos, con prefijo V/J/E/G o solo dígitos.
+ * Ejemplos: "V-26.946.393", "V-26946393", "26946393", "26.946.393", "J-12345678-9", etc.
+ */
+export function generarVariantesCedula(doc) {
+  if (!doc) return [];
+  const raw = String(doc).trim().toUpperCase();
+  const sinPuntos = raw.replace(/\./g, '');
+  const digits = raw.replace(/\D/g, '');
+  const variantes = new Set([raw, sinPuntos]);
+
+  if (digits.length >= 4) {
+    variantes.add(digits);
+    const withDots = digits.slice(0, 8).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    variantes.add(withDots);
+    for (const pref of ['V', 'J', 'E', 'G']) {
+      variantes.add(`${pref}-${digits}`);
+      variantes.add(`${pref}-${withDots}`);
+      variantes.add(`${pref}${digits}`);
+    }
+  }
+  return Array.from(variantes).filter(Boolean);
+}
+
