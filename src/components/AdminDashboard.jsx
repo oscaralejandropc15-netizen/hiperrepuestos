@@ -2684,8 +2684,8 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
                     </form>
                   </div>
 
-                  {/* Grid Holgado de Sublíneas sin cortes */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[520px] overflow-y-auto pr-1">
+                  {/* Grid Holgado de Sublíneas sin cortes ni desbordamientos */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[520px] overflow-y-auto pr-1">
                     {sublineasParaMaster.map((sublinea) => {
                       const count = conteoPorSublinea[sublinea] || conteoPorSublinea[sublinea.toLowerCase()] || 0;
                       const isRecienAgregada = ultimoItemCreado?.tipo === 'sublinea' && ultimoItemCreado?.valor?.toLowerCase() === sublinea.toLowerCase();
@@ -2693,7 +2693,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
                       return (
                         <div
                           key={sublinea}
-                          className={`p-3.5 border rounded-2xl flex flex-col justify-between gap-2.5 transition-all group ${
+                          className={`p-3.5 border rounded-2xl flex flex-col justify-between gap-3 transition-all group ${
                             isRecienAgregada
                               ? 'bg-emerald-500/10 border-emerald-500 shadow-sm ring-1 ring-emerald-500/30'
                               : 'bg-white dark:bg-[#0E131F] border-slate-200 dark:border-white/[0.08] hover:border-amber-500/50 hover:shadow-md'
@@ -2714,7 +2714,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 block mt-0.5">
+                              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 block mt-0.5 truncate">
                                 Sistema: {lineaActivaMaster}
                               </span>
                             </div>
@@ -2730,13 +2730,9 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
                             </span>
                           </div>
 
-                          {/* Fila inferior de acciones: clara, separada y sin comprimir el nombre */}
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/[0.04]">
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              {count > 0 ? `${count} productos activos` : 'Sin repuestos'}
-                            </div>
-
-                            <div className="flex items-center gap-1">
+                          {/* Fila inferior de acciones: clara, separada y sin comprimir el botón Ver */}
+                          <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-white/[0.06] mt-auto gap-2">
+                            <div className="flex items-center gap-1 shrink-0">
                               <button
                                 type="button"
                                 title={`Editar nombre de la pieza "${sublinea}"`}
@@ -2753,20 +2749,21 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
-                              <button
-                                type="button"
-                                title="Ver repuestos de esta sublínea en el inventario"
-                                onClick={() => {
-                                  setFiltroLineaInv(lineaActivaMaster);
-                                  setFiltroSublineaInv(sublinea);
-                                  setTabActiva('inventario');
-                                }}
-                                className="px-2 py-1 bg-slate-100 hover:bg-amber-500 hover:text-white dark:bg-white/10 dark:hover:bg-amber-500 text-slate-700 dark:text-slate-200 rounded-lg font-mono text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                              >
-                                <span>Ver</span>
-                                <ArrowRight className="w-3 h-3" />
-                              </button>
                             </div>
+
+                            <button
+                              type="button"
+                              title="Ver repuestos de esta sublínea en el inventario"
+                              onClick={() => {
+                                setFiltroLineaInv(lineaActivaMaster);
+                                setFiltroSublineaInv(sublinea);
+                                setTabActiva('inventario');
+                              }}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-amber-500 hover:text-white dark:bg-white/10 dark:hover:bg-amber-500 text-slate-700 dark:text-slate-200 rounded-lg font-mono text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                            >
+                              <span>Ver</span>
+                              <ArrowRight className="w-3 h-3 shrink-0" />
+                            </button>
                           </div>
                         </div>
                       );

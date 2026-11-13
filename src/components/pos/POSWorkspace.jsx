@@ -683,15 +683,6 @@ export default function POSWorkspace({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={agregarItemManual}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-red-500" />
-            <span>+ Renglón Manual</span>
-          </button>
-
           {(items.length > 0 || cliente.nombre) && (
             <button
               type="button"
@@ -901,7 +892,7 @@ export default function POSWorkspace({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-red-500" />
-              <span>+ Renglón Manual</span>
+              <span>Renglón Manual</span>
             </button>
 
             {items.length > 0 && (
@@ -1271,7 +1262,7 @@ export default function POSWorkspace({
               La factura no tiene renglones todavía
             </p>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Escribe en el buscador superior para agregar repuestos del inventario o presiona "+ Renglón Manual" para servicios o productos sin código.
+              Escribe en el buscador superior para agregar repuestos del inventario o presiona "Renglón Manual" para servicios o productos sin código.
             </p>
           </div>
         )}
