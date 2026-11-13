@@ -24,10 +24,11 @@ import {
   Tag,
   Coins,
   Users,
-  Filter,
   Eye,
   Sparkles,
-  SlidersHorizontal
+  SlidersHorizontal,
+  MapPin,
+  Phone
 } from 'lucide-react';
 import { formatUSD, formatVES, formatNumber, parseVenezuelanNumber, generarVariantesCedula } from '../lib/formatters';
 import { obtenerSublineasParaLinea } from '../lib/clasificacionesRepuestos';
@@ -37,7 +38,6 @@ import ModalZoomRepuesto from './ModalZoomRepuesto';
 
 /**
  * Componente Selector Inteligente con Búsqueda Escribible Integrada (Combobox / Autocomplete)
- * Permite al usuario tanto desplegar la lista como ESCRIBIR DIRECTAMENTE para filtrar opciones y el inventario en tiempo real.
  */
 function SearchableFilterSelect({
   label,
@@ -53,12 +53,10 @@ function SearchableFilterSelect({
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Sincronizar texto cuando cambia el valor externo
   useEffect(() => {
     setTextoFiltro(value || '');
   }, [value]);
 
-  // Manejar clic fuera para cerrar el menú desplegable
   useEffect(() => {
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -70,7 +68,6 @@ function SearchableFilterSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [value]);
 
-  // Filtrado reactivo de las opciones disponibles mientras el usuario tipea
   const opcionesFiltradas = useMemo(() => {
     const query = textoFiltro.trim().toLowerCase();
     if (!query) return options;
@@ -87,7 +84,7 @@ function SearchableFilterSelect({
     const val = e.target.value;
     setTextoFiltro(val);
     setAbierto(true);
-    onChange(val); // Filtra reactivamente la tabla de inventario
+    onChange(val);
   };
 
   const handleKeyDown = (e) => {
@@ -119,7 +116,7 @@ function SearchableFilterSelect({
         </span>
         {value ? (
           <span className="text-[9px] font-mono font-black text-red-600 dark:text-red-400">
-            Filtro Activo
+            Activo
           </span>
         ) : null}
       </label>
@@ -170,11 +167,8 @@ function SearchableFilterSelect({
         </div>
       </div>
 
-      {/* Menú flotante desplegable con opciones filtradas en tiempo real */}
       {abierto && (
         <div className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white dark:bg-[#0B0F19] border-2 border-slate-200 dark:border-white/[0.15] rounded-xl shadow-2xl py-1 text-xs divide-y divide-slate-100 dark:divide-white/[0.04] backdrop-blur-sm animate-in fade-in duration-100">
-          
-          {/* Opción 'Todos / Sin Filtro' */}
           <button
             type="button"
             onClick={() => seleccionarOpcion('')}
@@ -191,7 +185,6 @@ function SearchableFilterSelect({
             {!value && <Check className="w-3.5 h-3.5 text-red-500" />}
           </button>
 
-          {/* Opciones filtradas en tiempo real */}
           {opcionesFiltradas.length > 0 ? (
             opcionesFiltradas.map((opt) => {
               const estaSeleccionado =
@@ -261,14 +254,14 @@ export default function FacturadorForm({
 }) {
 
   // =========================================================================
-  // ESTADOS DE LA BÚSQUEDA Y FILTROS DE INVENTARIO (SECCIÓN SUPERIOR)
+  // ESTADOS DE LA BÚSQUEDA Y FILTROS DE INVENTARIO
   // =========================================================================
   const [busquedaTexto, setBusquedaTexto] = useState('');
   const [filtroLinea, setFiltroLinea] = useState('');
   const [filtroSublinea, setFiltroSublinea] = useState('');
   const [filtroMarca, setFiltroMarca] = useState('');
   const [filtroVehiculo, setFiltroVehiculo] = useState('');
-  const [filtroSoloStock, setFiltroSoloStock] = useState(false);
+  const [mostrarFiltrosAvanzados, setMostrarFiltrosAvanzados] = useState(false);
   const [repuestoParaZoom, setRepuestoParaZoom] = useState(null);
 
   const [listaLineas, setListaLineas] = useState([
@@ -281,7 +274,7 @@ export default function FacturadorForm({
   const [cargandoProductos, setCargandoProductos] = useState(false);
   const [ultimoAgregadoId, setUltimoAgregadoId] = useState(null);
 
-  // Sublíneas disponibles dinámicas según la línea seleccionada (Línea -> Sublínea en cascada tipo AutoZone)
+  // Sublíneas disponibles dinámicas según la línea seleccionada
   const sublineasDisponibles = useMemo(() => {
     return obtenerSublineasParaLinea(filtroLinea, productosEncontrados);
   }, [filtroLinea, productosEncontrados]);
@@ -296,7 +289,7 @@ export default function FacturadorForm({
   const clientSelectorRef = useRef(null);
   const inputBusquedaRef = useRef(null);
 
-  // Cargar dinámicamente opciones de líneas, marcas y vehículos existentes en la base de datos
+  // Cargar dinámicamente opciones de líneas, marcas y vehículos
   useEffect(() => {
     async function cargarOpcionesFiltros() {
       try {
@@ -323,7 +316,7 @@ export default function FacturadorForm({
     cargarOpcionesFiltros();
   }, []);
 
-  // Tasa numérica activa limpia para cálculos reactivos en tiempo real
+  // Tasa numérica activa limpia (con exactamente 2 decimales de precisión)
   const tasaActivaNum = useMemo(() => {
     const parsed = parseVenezuelanNumber(tasaBCV);
     return parsed > 0 ? parsed : 1;
@@ -340,7 +333,6 @@ export default function FacturadorForm({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Cargar clientes registrados en Supabase
   const cargarClientesRegistrados = async () => {
     try {
       const { data } = await supabase
@@ -355,9 +347,24 @@ export default function FacturadorForm({
     }
   };
 
-  // =========================================================================
-  // CONSULTA DE PRODUCTOS (FILTRADO JERÁRQUICO TIPO AUTOZONE)
-  // =========================================================================
+  // Determinar si la búsqueda está activa
+  const hayFiltrosActivos = Boolean(
+    busquedaTexto.trim().length > 0 || 
+    filtroLinea || 
+    filtroSublinea || 
+    filtroMarca || 
+    filtroVehiculo
+  );
+
+  const busquedaActiva = Boolean(
+    busquedaTexto.trim().length > 0 || 
+    filtroLinea || 
+    filtroSublinea || 
+    filtroMarca || 
+    filtroVehiculo
+  );
+
+  // Consulta de productos en Supabase (solo se ejecuta cuando el usuario busca o filtra)
   const buscarProductos = async (
     termino = busquedaTexto, 
     linea = filtroLinea, 
@@ -370,36 +377,26 @@ export default function FacturadorForm({
       const term = (termino || '').trim();
       let query = supabase.from('productos').select('*');
 
-      // 1. Filtro de Línea / Sistema (Tren Delantero, Frenos, Motor, Suspensión...)
       if (linea && linea !== '') {
         query = query.ilike('linea', `%${linea}%`);
       }
-
-      // 2. Filtro de Sub-Línea dependiente
       if (sublinea && sublinea !== '') {
-        // Soporta formatos numéricos "0289-BASE MOTOR" o texto "Base Motor"
         const cleanSub = sublinea.replace(/^\d+[-_ ]*/, '').trim();
         query = query.or(`sublinea.ilike.%${sublinea}%,sublinea.ilike.%${cleanSub}%,descripcion.ilike.%${cleanSub}%`);
       }
-
-      // 3. Filtro de Marca (555, BOSCH, WAGNER, GABRIEL, ATS...)
       if (marca && marca !== '') {
         query = query.or(`marca.ilike.%${marca}%,marca_producto.ilike.%${marca}%`);
       }
-
-      // 4. Filtro de Modelo de Vehículo (Toyota Corolla, Chevrolet Aveo, Ford Fiesta...)
       if (vehiculo && vehiculo !== '') {
         query = query.ilike('modelo_vehiculo', `%${vehiculo}%`);
       }
-
-      // 5. Búsqueda de texto libre cruzada
       if (term.length > 0) {
         query = query.or(
           `codigo_corto.ilike.%${term}%,referencia.ilike.%${term}%,descripcion.ilike.%${term}%,marca.ilike.%${term}%,marca_producto.ilike.%${term}%,modelo_vehiculo.ilike.%${term}%,linea.ilike.%${term}%,sublinea.ilike.%${term}%`
         );
       }
 
-      query = query.order('codigo_corto', { ascending: true }).limit(60);
+      query = query.order('codigo_corto', { ascending: true }).limit(50);
 
       const { data, error: errQuery } = await query;
       if (errQuery) throw errQuery;
@@ -412,50 +409,39 @@ export default function FacturadorForm({
     }
   };
 
-  // Cargar productos al inicio y al cambiar término o cualquiera de los filtros
+  // Cargar productos reactivamente al escribir o cambiar filtros
   useEffect(() => {
+    if (!busquedaActiva && !mostrarFiltrosAvanzados) {
+      setProductosEncontrados([]);
+      return;
+    }
     const timer = setTimeout(() => {
       buscarProductos(busquedaTexto, filtroLinea, filtroSublinea, filtroMarca, filtroVehiculo);
     }, 150);
     return () => clearTimeout(timer);
-  }, [busquedaTexto, filtroLinea, filtroSublinea, filtroMarca, filtroVehiculo]);
+  }, [busquedaTexto, filtroLinea, filtroSublinea, filtroMarca, filtroVehiculo, busquedaActiva, mostrarFiltrosAvanzados]);
 
-  // Productos a mostrar directamente del inventario consultado
-  const productosFiltradosParaMostrar = productosEncontrados;
-
-  // Limpiar todos los filtros y búsqueda
+  // Limpiar todos los filtros y repliegue de búsqueda
   const limpiarFiltros = () => {
     setBusquedaTexto('');
     setFiltroLinea('');
     setFiltroSublinea('');
     setFiltroMarca('');
     setFiltroVehiculo('');
+    setMostrarFiltrosAvanzados(false);
+    setProductosEncontrados([]);
     if (inputBusquedaRef.current) inputBusquedaRef.current.focus();
   };
 
-  const hayFiltrosActivos = Boolean(
-    busquedaTexto || 
-    filtroLinea || 
-    filtroSublinea || 
-    filtroMarca || 
-    filtroVehiculo
-  );
-
-  // =========================================================================
-  // CÁLCULO REACTIVO DE PRECIOS SEGÚN LA TASA EDITABLE ACTIVA
-  // =========================================================================
+  // Cálculo reactivo de precios
   const calcularPrecios = (prod) => {
     const baseUSD = parseFloat(prod.precio_detal_usd) || 0;
     const aplicaIva = prod.aplica_iva !== false;
 
-    // 1. Divisa ($ USD neto en efectivo, 0% IVA)
     const pDivisa = baseUSD;
-
-    // 2. Pago Móvil / Punto (Bolívares calculados con la tasa editable activa + 16% IVA si aplica)
     const pBs = aplicaIva ? (baseUSD * tasaActivaNum) * 1.16 : (baseUSD * tasaActivaNum);
     const pBsUSD = aplicaIva ? baseUSD * 1.16 : baseUSD;
 
-    // 3. Cashea (USD con 12% de recargo integrado + 16% IVA si aplica)
     const factorCashea = 1.12;
     const factorIva = aplicaIva ? 1.16 : 1.0;
     const pCashea = baseUSD * factorCashea * factorIva;
@@ -464,9 +450,7 @@ export default function FacturadorForm({
     return { pDivisa, pBs, pBsUSD, pCashea, pCasheaBs, aplicaIva };
   };
 
-  // =========================================================================
-  // AGREGAR AL CARRITO INFERIOR
-  // =========================================================================
+  // Agregar al carrito
   const agregarAlCarrito = (prod) => {
     const precios = calcularPrecios(prod);
 
@@ -517,13 +501,64 @@ export default function FacturadorForm({
     setTimeout(() => setUltimoAgregadoId(null), 1000);
   };
 
+  // Agregar renglón manual para servicios o repuestos personalizados
+  const agregarItemManual = () => {
+    setItems(prev => [
+      {
+        id: `manual_${Date.now()}`,
+        producto_id: null,
+        codigo_corto: 'MANUAL',
+        referencia: '—',
+        descripcion: '',
+        marca: 'VARIOS',
+        stock_disponible: 999,
+        cantidad: 1,
+        precio_divisa: '',
+        precio: '',
+        precio_bs: '',
+        subtotal_usd: 0,
+        subtotal_bs: 0,
+        subtotal_cashea: 0,
+        aplica_iva: formaPago !== 'EFECTIVO'
+      },
+      ...prev
+    ]);
+  };
+
+  const handleItemManualChange = (index, field, value) => {
+    setItems(prev => {
+      const next = [...prev];
+      const it = { ...next[index] };
+      if (field === 'descripcion') {
+        it.descripcion = value;
+      } else if (field === 'precio_divisa' || field === 'precio') {
+        const numVal = parseVenezuelanNumber(value);
+        it.precio_divisa = value;
+        it.precio = value;
+        it.precio_bs = numVal > 0 ? (numVal * tasaActivaNum).toFixed(2) : '';
+        it.subtotal_usd = (it.cantidad || 1) * (numVal > 0 ? numVal : 0);
+        it.subtotal_bs = it.subtotal_usd * tasaActivaNum;
+        it.subtotal_cashea = it.subtotal_usd * 1.12 * 1.16;
+      } else if (field === 'cantidad') {
+        const cant = parseInt(value) || 1;
+        it.cantidad = Math.max(1, cant);
+        const pUSD = parseFloat(it.precio_divisa || it.precio) || 0;
+        it.subtotal_usd = it.cantidad * pUSD;
+        it.subtotal_bs = it.subtotal_usd * tasaActivaNum;
+        it.subtotal_cashea = it.subtotal_usd * 1.12 * 1.16;
+      }
+      next[index] = it;
+      return next;
+    });
+  };
+
   const modificarCantidad = (index, delta) => {
     setItems(prev => {
       const next = [...prev];
       const item = { ...next[index] };
       const nuevaCantidad = Math.max(1, (item.cantidad || 1) + delta);
       item.cantidad = nuevaCantidad;
-      item.subtotal_usd = nuevaCantidad * (item.precio_divisa || 0);
+      item.subtotal_usd = nuevaCantidad * (item.precio_divisa || item.precio || 0);
       item.subtotal_bs = nuevaCantidad * (item.precio_bs || 0);
       item.subtotal_cashea = nuevaCantidad * (item.precio_cashea || 0);
       next[index] = item;
@@ -535,9 +570,7 @@ export default function FacturadorForm({
     setItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  // =========================================================================
-  // REGLAS ESTRICTAS DE CIERRE DE VENTA
-  // =========================================================================
+  // Modalidades de cierre
   const seleccionarModalidadCierre = (modalidad) => {
     if (modalidad === 'EFECTIVO') {
       setFormaPago('EFECTIVO');
@@ -565,7 +598,7 @@ export default function FacturadorForm({
     }
   };
 
-  // Manejador inteligente y ultrarrápido de Cédula/RIF
+  // Autocompletado inteligente de Cédula/RIF
   useEffect(() => {
     const doc = (cliente.documento || '').trim();
     const soloDigitos = doc.replace(/\D/g, '');
@@ -580,7 +613,7 @@ export default function FacturadorForm({
         const variantes = generarVariantesCedula(doc);
         const orClause = variantes.map(v => `cedula_rif.eq.${v}`).join(',');
 
-        // 1. Buscar en la tabla principal de clientes
+        // 1. Buscar en tabla clientes
         const { data: clientData } = await supabase
           .from('clientes')
           .select('*')
@@ -600,7 +633,7 @@ export default function FacturadorForm({
           return;
         }
 
-        // 2. Si aún no está en clientes, buscar en ventas anteriores (guias_despacho)
+        // 2. Buscar en guias_despacho anteriores
         const orGuias = variantes.map(v => `cliente_documento.eq.${v}`).join(',');
         const { data: guiaData } = await supabase
           .from('guias_despacho')
@@ -629,7 +662,6 @@ export default function FacturadorForm({
           return;
         }
 
-        // No encontrado en ningún registro
         setClienteEncontrado(null);
         setCliente(prev => ({ ...prev, id: null }));
       } catch (err) {
@@ -762,7 +794,7 @@ export default function FacturadorForm({
     setMostrarListaClientes(false);
   };
 
-  // Validación de cierre
+  // Validación de formulario para habilitar emisión
   const esCreditoTienda = formaPago === 'CREDITO_TIENDA';
   const clienteValidoParaCredito = !esCreditoTienda || Boolean(cliente.id || clienteEncontrado?.id);
   const formularioValido =
@@ -774,7 +806,7 @@ export default function FacturadorForm({
   const totalItemsEnCarrito = items.reduce((acc, it) => acc + (it.cantidad || 1), 0);
 
   return (
-    <div className="space-y-5 font-sans text-slate-900 dark:text-slate-100 pb-16">
+    <div className="space-y-4 sm:space-y-5 font-sans text-slate-900 dark:text-slate-100 pb-16">
 
       {/* Alerta de Error si ocurre */}
       {error && (
@@ -785,11 +817,11 @@ export default function FacturadorForm({
       )}
 
       {/* ========================================================================= */}
-      {/* BARRA SUPERIOR: CONTROL MANUAL DE TASA DE CAMBIO + NRO. DE CONTROL        */}
+      {/* BARRA SUPERIOR: CONTROL DE TASA OFICIAL BCV + NÚMERO DE FACTURA           */}
       {/* ========================================================================= */}
       <div className="glass-card rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[#0B0F19]/95 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         
-        {/* TASA DE CAMBIO EDITABLE (MANUAL PARA FINES DE SEMANA O AJUSTE LIBRE) */}
+        {/* TASA DE CAMBIO EDITABLE (EXACTAMENTE 2 DECIMALES) */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <div className="w-8 h-8 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-1 flex items-center justify-center flex-shrink-0">
             <img src="/bcv_logo.svg" alt="BCV" className="w-full h-full object-contain" />
@@ -800,7 +832,6 @@ export default function FacturadorForm({
               Tasa de Cambio:
             </span>
 
-            {/* INPUT NUMÉRICO TOTALMENTE EDITABLE CON 2 DECIMALES */}
             <div className="relative flex items-center">
               <input
                 type="number"
@@ -817,18 +848,17 @@ export default function FacturadorForm({
                 }}
                 placeholder="0.00"
                 className="w-28 sm:w-36 h-9 px-2.5 bg-slate-50 dark:bg-[#06080F] border-2 border-emerald-500/60 focus:border-emerald-500 rounded-xl font-mono font-black text-sm sm:text-base text-emerald-700 dark:text-emerald-300 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500/25 shadow-inner"
-                title="Tasa editable con 2 decimales: puedes escribir cualquier tasa (ej. 68.57) y todos los precios se actualizarán de inmediato"
+                title="Tasa editable con 2 decimales oficiales BCV"
               />
               <span className="text-xs font-mono font-bold text-slate-500 ml-1.5">Bs. / $</span>
             </div>
 
-            {/* BOTÓN RESTABLECER A TASA OFICIAL DE LA API */}
             {onActualizarBCV && (
               <button
                 type="button"
                 onClick={onActualizarBCV}
                 disabled={cargandoBCV}
-                title="Restablecer a Tasa Oficial BCV del día"
+                title="Actualizar tasa oficial BCV del día"
                 className="p-2 text-slate-400 hover:text-emerald-500 cursor-pointer rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
               >
                 <RotateCcw className={`w-3.5 h-3.5 ${cargandoBCV ? 'animate-spin text-emerald-500' : ''}`} />
@@ -837,11 +867,11 @@ export default function FacturadorForm({
           </div>
 
           <span className="text-[11px] font-mono text-slate-400 hidden lg:inline">
-            · Editable manualmente (fines de semana / cortes)
+            · Editable manualmente (2 decimales)
           </span>
         </div>
 
-        {/* NÚMERO DE CONTROL CORRELATIVO */}
+        {/* NÚMERO CORRELATIVO DE VENTA */}
         <div className="flex items-center gap-2 self-end sm:self-auto">
           <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500">
             Nº de Venta:
@@ -858,7 +888,8 @@ export default function FacturadorForm({
               <button
                 type="button"
                 onClick={() => setNumeroFacturaManual && setNumeroFacturaManual('')}
-                className="px-2 py-1 text-[10px] font-bold bg-slate-200 dark:bg-white/10 rounded-lg"
+                className="px-2 py-1 text-[10px] font-bold bg-slate-200 dark:bg-white/10 rounded-lg cursor-pointer"
+                title="Restablecer al correlativo automático"
               >
                 Auto
               </button>
@@ -869,749 +900,524 @@ export default function FacturadorForm({
       </div>
 
       {/* ========================================================================= */}
-      {/* SECCIÓN SUPERIOR: BÚSQUEDA Y RESULTADOS A ANCHO COMPLETO (DESAMONTONADO)  */}
+      {/* 1. DATOS DEL CLIENTE / RECEPTOR                                           */}
       {/* ========================================================================= */}
       <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.08] shadow-md bg-white dark:bg-[#0B0F19]/95 space-y-4">
         
-        {/* Cabecera de búsqueda y contador */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-red-600/10 text-red-600 dark:text-red-400 border border-red-500/25 flex items-center justify-center">
-              <Search className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                Búsqueda Rápida de Inventario (Mostrador)
-              </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Escribe cualquier referencia para consultar precios y existencias en tiempo real
-              </p>
-            </div>
+        {/* Encabezado del Cliente y Estado */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <User className="w-4 h-4 text-red-600" />
+              <span>Datos del Cliente / Receptor</span>
+            </span>
+
+            {buscandoCliente && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 animate-pulse border border-blue-200 dark:border-blue-800">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
+                Buscando cédula...
+              </span>
+            )}
+
+            {clienteEncontrado && !buscandoCliente && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-700 dark:text-emerald-300 shadow-xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>✓ Registrado: <strong className="font-extrabold">{clienteEncontrado.nombre}</strong> (Datos cargados)</span>
+              </span>
+            )}
+
+            {!clienteEncontrado && !buscandoCliente && (cliente.documento || '').replace(/\D/g, '').length >= 5 && (cliente.nombre || '').trim().length >= 2 && (
+              <div className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  ℹ️ Nuevo: Se guardará con la venta
+                </span>
+                <button
+                  type="button"
+                  onClick={registrarClienteManual}
+                  disabled={guardandoClienteManual}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
+                  title="Guardar este cliente en la base de datos ahora mismo"
+                >
+                  {guardandoClienteManual ? 'Guardando...' : '+ Registrar Ahora'}
+                </button>
+              </div>
+            )}
+
+            {clienteGuardadoExitoso && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-sm">
+                ✓ ¡Cliente registrado con éxito!
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-300 whitespace-nowrap">
-              {cargandoProductos ? 'Consultando...' : `${productosEncontrados.length} repuestos encontrados`}
-            </span>
-            {hayFiltrosActivos && (
-              <button
-                type="button"
-                onClick={limpiarFiltros}
-                className="px-2.5 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap shadow-xs"
-                title="Limpiar búsqueda y filtros"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Limpiar</span>
-              </button>
+          {/* Menú de Clientes Registrados */}
+          <div ref={clientSelectorRef} className="relative self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => {
+                if (mostrarListaClientes) setMostrarListaClientes(false);
+                else cargarClientesRegistrados();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <Users className="w-3.5 h-3.5 text-red-500" />
+              <span>Clientes Registrados</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {mostrarListaClientes && (
+              <div className="absolute right-0 top-full mt-1.5 w-72 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/[0.15] rounded-xl shadow-2xl z-50 p-2 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
+                {listaClientesRegistrados.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => seleccionarClienteRegistrado(c)}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{c.nombre}</p>
+                    <p className="text-[10px] font-mono text-slate-400">{c.cedula_rif}</p>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
 
-        {/* INPUT DE BÚSQUEDA A ANCHO COMPLETO */}
-        <div className="relative">
-          <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            ref={inputBusquedaRef}
-            type="text"
-            value={busquedaTexto}
-            onChange={(e) => setBusquedaTexto(e.target.value)}
-            placeholder="Escribe código corto, OEM, repuesto, marca o vehículo (ej: Corolla, Pastillas, 555, Amortiguador)..."
-            className="w-full h-12 sm:h-14 pl-12 pr-10 bg-slate-50 dark:bg-[#06080F] border-2 border-slate-300 dark:border-white/[0.12] focus:border-red-600 dark:focus:border-red-500 rounded-2xl text-sm sm:text-base font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-red-600/15 shadow-inner transition-all uppercase"
-            autoFocus
-          />
-          {busquedaTexto && (
-            <button
-              type="button"
-              onClick={() => {
-                setBusquedaTexto('');
-                if (inputBusquedaRef.current) inputBusquedaRef.current.focus();
-              }}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer p-1 rounded-full hover:bg-slate-200 dark:hover:bg-white/10"
-              title="Limpiar búsqueda"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        {/* ========================================================================= */}
-        {/* SELECTORES DE FILTRO JERÁRQUICO: LÍNEA -> SUB-LÍNEA -> MARCA -> VEHÍCULO   */}
-        {/* ========================================================================= */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080F]/80 border border-slate-200 dark:border-white/[0.08]">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            
-            {/* 1. SELECTOR DE LÍNEA / SISTEMA */}
-            <SearchableFilterSelect
-              label="1. Línea / Sistema:"
-              icon={Layers}
-              placeholder="Elige o busca línea (Frenos, Motor...)..."
-              allLabel="Todas las Líneas"
-              value={filtroLinea}
-              onChange={(val) => {
-                setFiltroLinea(val);
-                setFiltroSublinea(''); // Reiniciar sublínea cuando se cambia de línea
-              }}
-              options={listaLineas}
-            />
-
-            {/* 2. SELECTOR DE TIPO DE PIEZA / SUB-LÍNEA */}
-            <SearchableFilterSelect
-              label="2. Tipo de Pieza (Sub-Línea):"
-              icon={Tag}
-              placeholder={filtroLinea ? `Piezas de ${filtroLinea}...` : 'Elige o busca tipo de pieza...'}
-              allLabel={filtroLinea ? `Todas las piezas de ${filtroLinea}` : 'Todas las Sub-Líneas'}
-              value={filtroSublinea}
-              onChange={(val) => setFiltroSublinea(val)}
-              options={sublineasDisponibles}
-            />
-
-            {/* 3. SELECTOR DE MARCA DE REPUESTO */}
-            <SearchableFilterSelect
-              label="3. Marca de Repuesto:"
-              icon={Tag}
-              placeholder="Escribe marca (BOSCH, ATS, GABRIEL...)..."
-              allLabel="Todas las Marcas"
-              value={filtroMarca}
-              onChange={(val) => setFiltroMarca(val)}
-              options={listaMarcas}
-            />
-
-            {/* 4. SELECTOR DE MODELO / VEHÍCULO */}
-            <SearchableFilterSelect
-              label="4. Vehículo / Compatibilidad:"
-              icon={Car}
-              placeholder="Vehículo (Corolla, Aveo, Hilux...)..."
-              allLabel="Todos los Vehículos"
-              value={filtroVehiculo}
-              onChange={(val) => setFiltroVehiculo(val)}
-              options={listaVehiculos}
-            />
-          </div>
-        </div>
-
-        {/* TABLA DE RESULTADOS A ANCHO COMPLETO CON FOTO DE REFERENCIA AUTOZONE */}
-        <div className="border border-slate-200 dark:border-white/[0.08] rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-[#06080F]/95">
-          <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
-            {/* VISTA TABLA PARA COMPUTADORA Y PANTALLAS GRANDES */}
-            <table className="hidden md:table w-full text-left border-collapse text-xs">
-              <thead className="bg-slate-100 dark:bg-[#0B0F19] border-b-2 border-slate-300 dark:border-white/[0.12] sticky top-0 z-10 font-mono font-black text-slate-600 dark:text-slate-300 select-none">
-                <tr>
-                  <th className="w-12 px-2 py-2.5 text-center whitespace-nowrap">FOTO</th>
-                  <th className="px-2.5 py-2.5 whitespace-nowrap">CÓDIGO / OEM</th>
-                  <th className="px-3 py-2.5 min-w-[220px]">REPUESTO / COMPATIBILIDAD</th>
-                  <th className="px-2 py-2.5 text-center whitespace-nowrap">STOCK</th>
-                  <th className="px-2.5 py-2.5 text-right text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                    <div>DIVISA ($)</div>
-                    <div className="text-[9px] font-normal text-slate-400 font-sans">Efectivo 0% IVA</div>
-                  </th>
-                  <th className="px-2.5 py-2.5 text-right text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                    <div>P. MÓVIL (BS)</div>
-                    <div className="text-[9px] font-normal text-slate-400 font-sans">con 16% IVA</div>
-                  </th>
-                  <th className="px-2.5 py-2.5 text-right text-purple-600 dark:text-purple-400 whitespace-nowrap">
-                    <div>CASHEA ($)</div>
-                    <div className="text-[9px] font-normal text-slate-400 font-sans">+12% rec. e IVA</div>
-                  </th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap">
-                    ACCIÓN
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
-                {productosFiltradosParaMostrar.length > 0 ? (
-                  productosFiltradosParaMostrar.map((prod) => {
-                    const precios = calcularPrecios(prod);
-                    const agotado = (prod.stock ?? 0) <= 0;
-                    const esUltimoAgregado = ultimoAgregadoId === prod.id;
-                    const fotoProd = obtenerFotoRepuesto(prod);
-
-                    return (
-                      <tr
-                        key={prod.id}
-                        className="hover:bg-red-500/[0.04] dark:hover:bg-white/[0.02] transition-colors group"
-                      >
-                        {/* 0. FOTO DE REFERENCIA AUTOZONE (CLIC PARA ZOOM) */}
-                        <td className="w-12 px-2 py-1.5 text-center whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setRepuestoParaZoom(prod)}
-                            className="relative w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 hover:border-red-500 transition-all shadow-sm hover:scale-105 cursor-pointer bg-white dark:bg-black/40 group/foto inline-flex items-center justify-center p-0.5"
-                            title="Ver foto del repuesto"
-                          >
-                            <img
-                              src={fotoProd}
-                              alt={prod.descripcion}
-                              className="w-full h-full object-contain drop-shadow"
-                            />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/foto:opacity-100 flex items-center justify-center transition-opacity text-white rounded-xl">
-                              <Eye className="w-3.5 h-3.5" />
-                            </div>
-                          </button>
-                        </td>
-
-                        {/* 1. CÓDIGO CORTO + REF. OEM EN UNA SOLA CELDA COMPACTA */}
-                        <td className="px-2.5 py-2 whitespace-nowrap">
-                          <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 inline-block">
-                            {prod.codigo_corto}
-                          </span>
-                          {prod.referencia && prod.referencia !== '—' && (
-                            <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5 font-bold" title={`OEM: ${prod.referencia}`}>
-                              OEM: {prod.referencia}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* 2. DESCRIPCIÓN DEL REPUESTO + MARCA + VEHÍCULO + CATEGORÍAS */}
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                            {prod.linea && (
-                              <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25">
-                                {prod.linea}
-                              </span>
-                            )}
-                            {prod.sublinea && prod.sublinea !== 'General' && (
-                              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase bg-slate-100 dark:bg-white/[0.08] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/[0.08]">
-                                {prod.sublinea}
-                              </span>
-                            )}
-                            {/* BADGE MARCA */}
-                            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-slate-200/80 dark:bg-white/10 text-slate-800 dark:text-slate-200 border border-slate-300/80 dark:border-white/15">
-                              {prod.marca_producto || prod.marca || 'ATS'}
-                            </span>
-                            {/* COMPATIBILIDAD VEHÍCULO */}
-                            {(prod.modelo_vehiculo || prod.vehiculo) && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 dark:bg-white/[0.05] text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-white/[0.06]">
-                                <Car className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                                <span>{prod.modelo_vehiculo || prod.vehiculo}</span>
-                              </span>
-                            )}
-                          </div>
-                          <div className="font-extrabold text-xs text-slate-900 dark:text-white uppercase leading-snug group-hover:text-red-600 dark:group-hover:text-rose-400 transition-colors">
-                            {prod.descripcion}
-                          </div>
-                          {prod.medidas && (
-                            <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                              {prod.medidas}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* 6. STOCK (MUESTRA 0 CON ALTA VISIBILIDAD) */}
-                        <td className="px-2 py-2 text-center whitespace-nowrap">
-                          {agotado ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/35 shadow-sm">
-                              <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                              <span>0</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/35 shadow-sm">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                              <span>{prod.stock}</span>
-                              <span className="text-[10px] font-sans font-normal opacity-80">disp.</span>
-                            </span>
-                          )}
-                        </td>
-
-                        {/* 7. PRECIO DIVISA ($) */}
-                        <td className="px-2.5 py-2 text-right whitespace-nowrap font-mono text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">
-                          <div className="font-black">{formatUSD(precios.pDivisa)}</div>
-                          <div className="text-[10px] text-slate-400 font-normal">
-                            ≈ {formatVES(precios.pDivisa * tasaActivaNum)}
-                          </div>
-                        </td>
-
-                        {/* 8. PRECIO PAGO MÓVIL (BS RECALCULADO CON TASA EDITABLE) */}
-                        <td className="px-2.5 py-2 text-right whitespace-nowrap font-mono text-xs text-blue-600 dark:text-blue-400">
-                          <div className="font-black">{formatVES(precios.pBs)}</div>
-                          <div className="text-[10px] text-slate-400 font-normal">
-                            {formatUSD(precios.pBsUSD)}
-                          </div>
-                        </td>
-
-                        {/* 9. PRECIO CASHEA ($) */}
-                        <td className="px-2.5 py-2 text-right whitespace-nowrap font-mono text-xs text-purple-600 dark:text-purple-400">
-                          <div className="font-black">{formatUSD(precios.pCashea)}</div>
-                          <div className="text-[10px] text-purple-400/80 font-normal">
-                            ≈ {formatVES(precios.pCasheaBs)}
-                          </div>
-                        </td>
-
-                        {/* 10. BOTÓN AGREGAR */}
-                        <td className="px-2.5 py-2 text-center whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => agregarAlCarrito(prod)}
-                            title={agotado ? `Agregar ${prod.descripcion} (Stock en 0 - Para cotización/pedido)` : `Agregar ${prod.descripcion} al carrito`}
-                            className={`px-2.5 py-1.5 rounded-xl font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer mx-auto ${
-                              esUltimoAgregado
-                                ? 'bg-emerald-500 text-white ring-2 ring-emerald-400 scale-105'
-                                : agotado
-                                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-950/20'
-                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/20'
-                            }`}
-                          >
-                            {esUltimoAgregado ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                <span>¡Listo!</span>
-                              </>
-                            ) : agotado ? (
-                              <>
-                                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                                <span>Cotizar</span>
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                                <span>Agregar</span>
-                              </>
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="10" className="p-8 text-center text-slate-500 dark:text-slate-400">
-                      <div className="max-w-md mx-auto space-y-2">
-                        <Package className="w-8 h-8 mx-auto text-slate-400 opacity-60" />
-                        <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                          No se encontraron repuestos con "{busquedaTexto}"
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setBusquedaTexto('')}
-                          className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
-                        >
-                          Ver todo el inventario
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-
-            {/* VISTA TARJETAS TÁCTILES PARA CELULARES Y PANTALLAS PEQUEÑAS (MD:HIDDEN) */}
-            <div className="md:hidden divide-y divide-slate-100 dark:divide-white/[0.08] p-2 space-y-2.5">
-              {productosFiltradosParaMostrar.length > 0 ? (
-                productosFiltradosParaMostrar.map((prod) => {
-                  const precios = calcularPrecios(prod);
-                  const agotado = (prod.stock ?? 0) <= 0;
-                  const esUltimoAgregado = ultimoAgregadoId === prod.id;
-                  const fotoProd = obtenerFotoRepuesto(prod);
-
+        {/* Campos del cliente */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          {/* Cédula/RIF */}
+          <div>
+            <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
+              Cédula / RIF *
+            </label>
+            <div className="flex gap-1">
+              <div className="flex bg-slate-100 dark:bg-[#06080F] rounded-lg p-0.5 border border-slate-300 dark:border-white/10">
+                {['V', 'J', 'E', 'G'].map((tipo) => {
+                  const activo = (cliente.documento || '').startsWith(`${tipo}-`);
                   return (
-                    <div 
-                      key={prod.id} 
-                      className="p-3 bg-slate-50/70 dark:bg-white/[0.02] rounded-xl border border-slate-200 dark:border-white/[0.08] space-y-2.5 shadow-2xs"
+                    <button
+                      key={tipo}
+                      type="button"
+                      onClick={() => seleccionarPrefijo(tipo)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-black cursor-pointer transition-colors ${
+                        activo ? 'bg-red-600 text-white' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                      }`}
                     >
-                      <div className="flex items-start gap-2.5">
-                        {/* Foto zoomable */}
-                        <button
-                          type="button"
-                          onClick={() => setRepuestoParaZoom(prod)}
-                          className="relative w-12 h-12 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 shrink-0 bg-white dark:bg-black/40 flex items-center justify-center p-0.5 cursor-pointer shadow-xs"
-                          title="Ver foto del repuesto"
-                        >
-                          <img
-                            src={fotoProd}
-                            alt={prod.descripcion}
-                            className="w-full h-full object-contain drop-shadow"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 active:opacity-100 flex items-center justify-center text-white rounded-xl">
-                            <Eye className="w-3.5 h-3.5" />
-                          </div>
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          {/* Badges de Código, Marca y Stock */}
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25">
-                              {prod.codigo_corto}
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-slate-200/80 dark:bg-white/10 text-slate-800 dark:text-slate-200">
-                              {prod.marca_producto || prod.marca || 'ATS'}
-                            </span>
-                            {agotado ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/35">
-                                Stock: 0
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/35">
-                                Stock: {prod.stock}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Nombre del Repuesto */}
-                          <div className="font-extrabold text-xs text-slate-900 dark:text-white uppercase leading-snug mt-1">
-                            {prod.descripcion}
-                          </div>
-
-                          {/* Compatibilidad Vehículo */}
-                          {(prod.modelo_vehiculo || prod.vehiculo) && (
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 mt-0.5">
-                              <Car className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                              <span className="truncate">{prod.modelo_vehiculo || prod.vehiculo}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Fila Inferior: Precios y Botón de Acción Táctil */}
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 dark:border-white/[0.06] gap-2">
-                        <div className="space-y-0.5">
-                          <div className="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400">
-                            {formatUSD(precios.pDivisa)}
-                            <span className="text-[10px] text-slate-400 font-normal ml-1">Efectivo</span>
-                          </div>
-                          <div className="font-mono text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                            {formatVES(precios.pBs)}
-                            <span className="text-[9px] text-slate-400 font-normal ml-1">P. Móvil</span>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => agregarAlCarrito(prod)}
-                          className={`px-3.5 py-2 rounded-xl font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer min-h-[38px] ${
-                            esUltimoAgregado
-                              ? 'bg-emerald-500 text-white ring-2 ring-emerald-400'
-                              : agotado
-                                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                          }`}
-                        >
-                          {esUltimoAgregado ? (
-                            <>
-                              <Check className="w-4 h-4 stroke-[3]" />
-                              <span>¡Listo!</span>
-                            </>
-                          ) : agotado ? (
-                            <>
-                              <Plus className="w-4 h-4 stroke-[2.5]" />
-                              <span>Cotizar</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-4 h-4 stroke-[2.5]" />
-                              <span>Agregar</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                      {tipo}
+                    </button>
                   );
-                })
-              ) : (
-                <div className="p-6 text-center text-slate-500 dark:text-slate-400 space-y-2">
-                  <Package className="w-8 h-8 mx-auto text-slate-400 opacity-60" />
-                  <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                    No se encontraron repuestos con "{busquedaTexto}"
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setBusquedaTexto('')}
-                    className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
-                  >
-                    Ver todo el inventario
-                  </button>
-                </div>
-              )}
+                })}
+              </div>
+              <input
+                type="text"
+                value={cliente.documento || ''}
+                onChange={(e) => handleDocumentoChange(e.target.value)}
+                placeholder="26.946.393"
+                className="w-full h-9 px-2.5 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+              />
             </div>
           </div>
-        </div>
 
+          {/* Nombre o Razón Social */}
+          <div className="lg:col-span-2">
+            <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
+              Nombre o Razón Social *
+            </label>
+            <input
+              type="text"
+              value={cliente.nombre || ''}
+              onChange={(e) => setCliente(prev => ({ ...prev, nombre: e.target.value }))}
+              placeholder="Ej. Taller Los Andes C.A. o Juan Pérez"
+              className="w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+            />
+          </div>
+
+          {/* Teléfono */}
+          <div>
+            <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
+              Teléfono de Contacto
+            </label>
+            <input
+              type="tel"
+              value={cliente.telefono || ''}
+              onChange={(e) => handleTelefonoChange(e.target.value)}
+              placeholder="0414-1234567"
+              className="w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+            />
+          </div>
+
+          {/* Dirección */}
+          <div className="sm:col-span-2 lg:col-span-4">
+            <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
+              Dirección de Despacho / Entrega (opcional)
+            </label>
+            <input
+              type="text"
+              value={cliente.direccion || ''}
+              onChange={(e) => setCliente(prev => ({ ...prev, direccion: e.target.value }))}
+              placeholder="Ej. Av. Principal, Local 4, Charallave"
+              className="w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+            />
+          </div>
+        </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* SECCIÓN INFERIOR: CLIENTE, CARRITO Y CIERRE A ANCHO COMPLETO             */}
+      {/* 2. RENGLONES DE LA FACTURA / CARRITO DE VENTAS                            */}
       {/* ========================================================================= */}
-      <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.08] shadow-md bg-white dark:bg-[#0B0F19]/95 space-y-5">
+      <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.08] shadow-md bg-white dark:bg-[#0B0F19]/95 space-y-4">
         
-        {/* FILA 1: DATOS DEL CLIENTE (RECEPTOR) EN FORMATO HORIZONTAL HOLGADO */}
-        <div className="space-y-3 pb-4 border-b border-slate-100 dark:border-white/[0.06]">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <User className="w-4 h-4 text-red-600" />
-                <span>Datos del Cliente / Receptor</span>
-              </span>
-
-              {/* Indicadores inteligentes de estado del cliente */}
-              {buscandoCliente && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 animate-pulse border border-blue-200 dark:border-blue-800">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
-                  Buscando cédula...
-                </span>
-              )}
-
-              {clienteEncontrado && !buscandoCliente && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-700 dark:text-emerald-300 shadow-xs">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>✓ Registrado: <strong className="font-extrabold">{clienteEncontrado.nombre}</strong> (Datos cargados)</span>
-                </span>
-              )}
-
-              {!clienteEncontrado && !buscandoCliente && (cliente.documento || '').replace(/\D/g, '').length >= 5 && (cliente.nombre || '').trim().length >= 2 && (
-                <div className="inline-flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                    ℹ️ Nuevo: Se guardará con la venta
-                  </span>
-                  <button
-                    type="button"
-                    onClick={registrarClienteManual}
-                    disabled={guardandoClienteManual}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
-                    title="Guardar este cliente en la base de datos ahora mismo"
-                  >
-                    {guardandoClienteManual ? 'Guardando...' : '+ Registrar Ahora'}
-                  </button>
-                </div>
-              )}
-
-              {clienteGuardadoExitoso && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-sm">
-                  ✓ ¡Cliente registrado con éxito!
-                </span>
-              )}
+        {/* Cabecera del Carrito */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-red-600/10 text-red-600 dark:text-red-400 border border-red-500/25 flex items-center justify-center">
+              <ShoppingBag className="w-4 h-4" />
             </div>
-
-            {/* Selector de Clientes Registrados */}
-            <div ref={clientSelectorRef} className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  if (mostrarListaClientes) setMostrarListaClientes(false);
-                  else cargarClientesRegistrados();
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-              >
-                <Users className="w-3.5 h-3.5 text-red-500" />
-                <span>Clientes Registrados</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-
-              {mostrarListaClientes && (
-                <div className="absolute right-0 top-full mt-1.5 w-72 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/[0.15] rounded-xl shadow-2xl z-50 p-2 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
-                  {listaClientesRegistrados.map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => seleccionarClienteRegistrado(c)}
-                      className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
-                    >
-                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{c.nombre}</p>
-                      <p className="text-[10px] font-mono text-slate-400">{c.cedula_rif}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div>
+              <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Renglones de la Factura ({totalItemsEnCarrito} {totalItemsEnCarrito === 1 ? 'repuesto' : 'repuestos'})
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Escribe en el buscador para consultar inventario o agrega renglones manuales
+              </p>
             </div>
           </div>
 
-          {/* Grid de 4 campos del cliente */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {/* Cédula/RIF */}
-            <div>
-              <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
-                Cédula / RIF *
-              </label>
-              <div className="flex gap-1">
-                <div className="flex bg-slate-100 dark:bg-[#06080F] rounded-lg p-0.5 border border-slate-300 dark:border-white/10">
-                  {['V', 'J'].map((tipo) => {
-                    const activo = (cliente.documento || '').startsWith(`${tipo}-`);
-                    return (
-                      <button
-                        key={tipo}
-                        type="button"
-                        onClick={() => seleccionarPrefijo(tipo)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-mono font-black ${
-                          activo ? 'bg-red-600 text-white' : 'text-slate-500'
-                        }`}
-                      >
-                        {tipo}
-                      </button>
-                    );
-                  })}
-                </div>
-                <input
-                  type="text"
-                  value={cliente.documento || ''}
-                  onChange={(e) => handleDocumentoChange(e.target.value)}
-                  placeholder="26.946.393"
-                  className="w-full h-9 px-2.5 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
-                />
-              </div>
-            </div>
-
-            {/* Nombre */}
-            <div className="lg:col-span-2">
-              <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
-                Nombre o Razón Social *
-              </label>
-              <input
-                type="text"
-                value={cliente.nombre || ''}
-                onChange={(e) => setCliente(prev => ({ ...prev, nombre: e.target.value }))}
-                placeholder="Cliente Mostrador o Razón Social"
-                className="w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
-              />
-            </div>
-
-            {/* Teléfono */}
-            <div>
-              <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
-                Teléfono de Contacto
-              </label>
-              <input
-                type="tel"
-                value={cliente.telefono || ''}
-                onChange={(e) => handleTelefonoChange(e.target.value)}
-                placeholder="Ej. 0414-1234567"
-                className="w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* FILA 2: TABLA DEL CARRITO DE COMPRAS A ANCHO COMPLETO */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-emerald-500" />
-              <span>Carrito de Compras ({totalItemsEnCarrito} {totalItemsEnCarrito === 1 ? 'repuesto' : 'repuestos'})</span>
-            </span>
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={agregarItemManual}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              title="Agregar un renglón manual para escribir un repuesto o servicio personalizado"
+            >
+              <Plus className="w-3.5 h-3.5 text-red-500" />
+              <span>+ Renglón Manual</span>
+            </button>
 
             {items.length > 0 && (
               <button
                 type="button"
                 onClick={onLimpiar}
-                className="text-xs font-mono font-bold text-red-500 hover:text-red-700 dark:hover:text-red-400 cursor-pointer flex items-center gap-1"
+                className="px-3 py-1.5 text-xs font-mono font-bold text-red-500 hover:text-red-700 dark:hover:text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-xl cursor-pointer flex items-center gap-1 transition-colors"
+                title="Vaciar todos los productos del carrito"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Vaciar Carrito</span>
               </button>
             )}
           </div>
+        </div>
 
-          {items.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl space-y-2">
-              <ShoppingBag className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">El carrito de venta está vacío</p>
-              <p className="text-xs text-slate-400">
-                Presiona el botón verde <strong>[ + Agregar ]</strong> en la tabla de búsqueda superior para cargar productos.
-              </p>
+        {/* BARRA DE BÚSQUEDA RÁPIDA DE INVENTARIO */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              ref={inputBusquedaRef}
+              type="text"
+              value={busquedaTexto}
+              onChange={(e) => setBusquedaTexto(e.target.value)}
+              placeholder="🔍 Escribe código corto, OEM, repuesto, marca o vehículo (ej: Corolla, Pastilla, 05143)..."
+              className="w-full h-11 pl-10 pr-9 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 focus:border-red-600 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-600/20 transition-all uppercase"
+            />
+            {busquedaTexto && (
+              <button
+                type="button"
+                onClick={limpiarFiltros}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-full cursor-pointer"
+                title="Limpiar búsqueda"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMostrarFiltrosAvanzados(prev => !prev)}
+            className={`px-3 h-11 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              mostrarFiltrosAvanzados || filtroLinea || filtroMarca || filtroVehiculo
+                ? 'bg-red-500/10 text-red-600 border-red-500/30'
+                : 'bg-slate-100 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10'
+            }`}
+            title="Mostrar u ocultar filtros por Línea, Sub-línea, Marca y Vehículo"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Filtros</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mostrarFiltrosAvanzados ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* PANEL DESGLOSABLE DE BÚSQUEDA: SOLO SE MUESTRA SI ESTÁ BUSCANDO           */}
+        {/* ========================================================================= */}
+        {(busquedaActiva || mostrarFiltrosAvanzados) && (
+          <div className="p-3 sm:p-4 rounded-2xl bg-slate-50 dark:bg-[#06080F]/90 border-2 border-red-500/30 space-y-3 animate-in fade-in duration-200">
+            
+            {/* Filtros avanzados si están desplegados */}
+            {mostrarFiltrosAvanzados && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pb-2 border-b border-slate-200 dark:border-white/[0.08]">
+                <SearchableFilterSelect
+                  label="1. Línea / Sistema:"
+                  icon={Layers}
+                  placeholder="Línea..."
+                  allLabel="Todas las Líneas"
+                  value={filtroLinea}
+                  onChange={(val) => {
+                    setFiltroLinea(val);
+                    setFiltroSublinea('');
+                  }}
+                  options={listaLineas}
+                />
+                <SearchableFilterSelect
+                  label="2. Tipo de Pieza:"
+                  icon={Tag}
+                  placeholder="Sub-línea..."
+                  allLabel="Todos los Tipos"
+                  value={filtroSublinea}
+                  onChange={(val) => setFiltroSublinea(val)}
+                  options={sublineasDisponibles}
+                />
+                <SearchableFilterSelect
+                  label="3. Marca:"
+                  icon={Sparkles}
+                  placeholder="Marca..."
+                  allLabel="Todas las Marcas"
+                  value={filtroMarca}
+                  onChange={(val) => setFiltroMarca(val)}
+                  options={listaMarcas}
+                />
+                <SearchableFilterSelect
+                  label="4. Vehículo:"
+                  icon={Car}
+                  placeholder="Vehículo..."
+                  allLabel="Todos los Vehículos"
+                  value={filtroVehiculo}
+                  onChange={(val) => setFiltroVehiculo(val)}
+                  options={listaVehiculos}
+                />
+              </div>
+            )}
+
+            {/* Cabecera de resultados */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span>{cargandoProductos ? 'Buscando en inventario...' : `${productosEncontrados.length} repuestos encontrados`}</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={limpiarFiltros}
+                className="px-2.5 py-1 text-xs font-bold text-slate-500 hover:text-red-600 bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 rounded-lg hover:border-red-500/30 transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                title="Cerrar resultados de búsqueda"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Cerrar búsqueda</span>
+              </button>
             </div>
-          ) : (
-            <div className="border border-slate-200 dark:border-white/[0.08] rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-[#06080F]/95">
-              <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
-                {/* VISTA TABLA PARA COMPUTADORA */}
-                <table className="hidden md:table w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-100 dark:bg-[#0B0F19] border-b border-slate-200 dark:border-white/[0.1] font-mono font-black text-slate-600 dark:text-slate-300 sticky top-0 select-none">
-                    <tr>
-                      <th className="px-2.5 py-2">CÓDIGO</th>
-                      <th className="px-3 py-2 min-w-[180px]">DESCRIPCIÓN</th>
-                      <th className="px-2.5 py-2 text-right">PRECIO UNITARIO ($)</th>
-                      <th className="px-2 py-2 text-center">CANTIDAD</th>
-                      <th className="px-2.5 py-2 text-right text-emerald-600 dark:text-emerald-400">SUBTOTAL ($)</th>
-                      <th className="px-2.5 py-2 text-right text-blue-600 dark:text-blue-400">SUBTOTAL (BS)</th>
-                      <th className="px-2 py-2 text-center w-10">QUITAR</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
-                    {items.map((item, index) => {
-                      const pDivisa = item.precio_divisa || item.precio || 0;
-                      const qty = item.cantidad || 1;
-                      const aplicaIva = item.aplica_iva !== false;
 
-                      // Cálculo dinámico según modalidad de pago activa en el carrito
-                      let precioUnitarioUSD = pDivisa;
-                      let subTotalUSD = qty * pDivisa;
-                      let subTotalBs = subTotalUSD * tasaActivaNum;
-
-                      if (formaPago === 'CASHEA') {
-                        // Cashea: 12% recargo + 16% IVA
-                        const factorCashea = 1.12;
-                        const factorIva = aplicaIva ? 1.16 : 1.0;
-                        precioUnitarioUSD = pDivisa * factorCashea * factorIva;
-                        subTotalUSD = qty * precioUnitarioUSD;
-                        subTotalBs = subTotalUSD * tasaActivaNum;
-                      } else if (formaPago === 'PAGO_MOVIL' || formaPago === 'CREDITO_TIENDA') {
-                        // Pago Móvil y Crédito: 16% IVA
-                        const factorIva = aplicaIva ? 1.16 : 1.0;
-                        precioUnitarioUSD = pDivisa * factorIva;
-                        subTotalUSD = qty * precioUnitarioUSD;
-                        subTotalBs = subTotalUSD * tasaActivaNum;
-                      } else {
-                        // Efectivo: 0% IVA
-                        precioUnitarioUSD = pDivisa;
-                        subTotalUSD = qty * pDivisa;
-                        subTotalBs = subTotalUSD * tasaActivaNum;
-                      }
+            {/* Tabla de resultados desglosados con scroll suave */}
+            <div className="max-h-[360px] overflow-y-auto rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#0B0F19] shadow-inner">
+              
+              {/* Vista Desktop */}
+              <table className="hidden md:table w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-100 dark:bg-[#06080F] border-b border-slate-200 dark:border-white/[0.08] text-[10px] font-mono font-black text-slate-500 uppercase sticky top-0 z-10">
+                  <tr>
+                    <th className="px-2 py-2 text-center w-12">FOTO</th>
+                    <th className="px-2.5 py-2 w-28">CÓDIGO / OEM</th>
+                    <th className="px-3 py-2">REPUESTO / COMPATIBILIDAD</th>
+                    <th className="px-2 py-2 text-center w-20">STOCK</th>
+                    <th className="px-2.5 py-2 text-right w-24 text-emerald-600 dark:text-emerald-400">DIVISA ($)</th>
+                    <th className="px-2.5 py-2 text-right w-28 text-blue-600 dark:text-blue-400">P. MÓVIL (BS)</th>
+                    <th className="px-2.5 py-2 text-right w-24 text-purple-600 dark:text-purple-400">CASHEA ($)</th>
+                    <th className="px-2.5 py-2 text-center w-24">ACCIÓN</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
+                  {productosEncontrados.length > 0 ? (
+                    productosEncontrados.map((prod) => {
+                      const precios = calcularPrecios(prod);
+                      const agotado = (prod.stock ?? 0) <= 0;
+                      const esUltimoAgregado = ultimoAgregadoId === prod.id;
+                      const fotoProd = obtenerFotoRepuesto(prod);
 
                       return (
-                        <tr key={item.id || index} className="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
-                          <td className="px-2.5 py-2 whitespace-nowrap font-mono font-bold text-red-600 dark:text-red-400">
-                            {item.codigo_corto}
-                          </td>
-                          <td className="px-3 py-2 font-bold uppercase text-slate-900 dark:text-white">
-                            {item.descripcion}
-                          </td>
-                          <td className="px-2.5 py-2 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
-                            {formatUSD(precioUnitarioUSD)}
-                          </td>
-                          <td className="px-2 py-2 text-center whitespace-nowrap">
-                            <div className="inline-flex items-center bg-slate-100 dark:bg-[#0B0F19] border border-slate-300 dark:border-white/10 rounded-lg p-0.5">
-                              <button
-                                type="button"
-                                onClick={() => modificarCantidad(index, -1)}
-                                className="w-5 h-5 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <span className="w-7 text-center font-mono font-black text-xs text-slate-900 dark:text-white">
-                                {item.cantidad || 1}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => modificarCantidad(index, 1)}
-                                className="w-5 h-5 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-2.5 py-2 text-right font-mono font-black text-xs text-emerald-600 dark:text-emerald-400">
-                            {formatUSD(subTotalUSD)}
-                          </td>
-                          <td className="px-2.5 py-2 text-right font-mono font-bold text-xs text-blue-600 dark:text-blue-400">
-                            {formatVES(subTotalBs)}
-                          </td>
-                          <td className="px-2 py-2 text-center">
+                        <tr key={prod.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                          <td className="px-2 py-1.5 text-center">
                             <button
                               type="button"
-                              onClick={() => eliminarItem(index)}
-                              className="p-1 text-slate-400 hover:text-red-500 cursor-pointer"
-                              title="Eliminar producto del carrito"
+                              onClick={() => setRepuestoParaZoom(prod)}
+                              className="w-9 h-9 rounded-lg border border-slate-200 dark:border-white/10 p-0.5 bg-white dark:bg-black/30 inline-flex items-center justify-center cursor-pointer hover:border-red-500 transition-colors"
+                              title="Ver foto del repuesto"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <img src={fotoProd} alt={prod.descripcion} className="w-full h-full object-contain" />
+                            </button>
+                          </td>
+                          <td className="px-2.5 py-1.5 whitespace-nowrap">
+                            <span className="font-mono font-black text-xs text-red-600 dark:text-red-400">
+                              {prod.codigo_corto}
+                            </span>
+                            {prod.referencia && prod.referencia !== '—' && (
+                              <div className="text-[10px] font-mono text-slate-400">
+                                OEM: {prod.referencia}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                              {prod.linea && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                  {prod.linea}
+                                </span>
+                              )}
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300">
+                                {prod.marca_producto || prod.marca || 'ATS'}
+                              </span>
+                              {(prod.modelo_vehiculo || prod.vehiculo) && (
+                                <span className="text-[10px] text-slate-500">
+                                  • {prod.modelo_vehiculo || prod.vehiculo}
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-bold text-xs uppercase text-slate-900 dark:text-white leading-tight">
+                              {prod.descripcion}
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                            {agotado ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                0
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                                {prod.stock}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
+                            {formatUSD(precios.pDivisa)}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right font-mono font-bold text-blue-600 dark:text-blue-400">
+                            {formatVES(precios.pBs)}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right font-mono font-bold text-purple-600 dark:text-purple-400">
+                            {formatUSD(precios.pCashea)}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => agregarAlCarrito(prod)}
+                              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                                esUltimoAgregado
+                                  ? 'bg-emerald-500 text-white shadow-sm'
+                                  : agotado
+                                    ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                    : 'btn-gradient-red text-white shadow-xs'
+                              }`}
+                            >
+                              {esUltimoAgregado ? '¡Listo!' : agotado ? '+ Cotizar' : '+ Agregar'}
                             </button>
                           </td>
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="p-6 text-center text-slate-400">
+                        {cargandoProductos ? 'Consultando repuestos...' : `No se encontraron repuestos con "${busquedaTexto}"`}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
 
-                {/* VISTA TARJETAS TÁCTILES PARA CELULARES (MD:HIDDEN) */}
-                <div className="md:hidden divide-y divide-slate-100 dark:divide-white/[0.08] p-2 space-y-2.5">
+              {/* Vista Móvil */}
+              <div className="md:hidden divide-y divide-slate-100 dark:divide-white/[0.06] p-2 space-y-2">
+                {productosEncontrados.map((prod) => {
+                  const precios = calcularPrecios(prod);
+                  const agotado = (prod.stock ?? 0) <= 0;
+                  const esUltimoAgregado = ultimoAgregadoId === prod.id;
+                  const fotoProd = obtenerFotoRepuesto(prod);
+
+                  return (
+                    <div key={prod.id} className="p-2.5 bg-slate-50/50 dark:bg-white/[0.02] rounded-xl space-y-2">
+                      <div className="flex items-start gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setRepuestoParaZoom(prod)}
+                          className="w-12 h-12 rounded-lg border border-slate-200 dark:border-white/10 p-0.5 bg-white shrink-0"
+                        >
+                          <img src={fotoProd} alt={prod.descripcion} className="w-full h-full object-contain" />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-black text-xs text-red-600">{prod.codigo_corto}</span>
+                            <span className="text-[10px] font-bold text-slate-600 uppercase">{prod.marca_producto || prod.marca}</span>
+                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${agotado ? 'bg-amber-500/15 text-amber-600' : 'bg-emerald-500/15 text-emerald-600'}`}>
+                              Stock: {prod.stock ?? 0}
+                            </span>
+                          </div>
+                          <div className="font-bold text-xs uppercase text-slate-900 dark:text-white mt-0.5 leading-snug">
+                            {prod.descripcion}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-white/[0.04]">
+                        <div className="font-mono text-xs">
+                          <span className="font-black text-emerald-600">{formatUSD(precios.pDivisa)}</span>
+                          <span className="text-slate-400 text-[10px] ml-1">({formatVES(precios.pBs)})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => agregarAlCarrito(prod)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                            esUltimoAgregado ? 'bg-emerald-500 text-white' : 'btn-gradient-red text-white'
+                          }`}
+                        >
+                          {esUltimoAgregado ? '¡Listo!' : '+ Agregar'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* TABLA PRINCIPAL DEL CARRITO / RENGLONES FACTURADOS */}
+        {items.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl space-y-2 bg-slate-50/50 dark:bg-white/[0.01]">
+            <ShoppingBag className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">El carrito de facturación está listo</p>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Escribe en el buscador para consultar y agregar repuestos del inventario, o presiona <strong>+ Renglón Manual</strong> para ingresar un concepto personalizado.
+            </p>
+          </div>
+        ) : (
+          <div className="border border-slate-200 dark:border-white/[0.08] rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-[#06080F]/95">
+            <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+              
+              {/* Tabla Desktop del Carrito */}
+              <table className="hidden md:table w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-100 dark:bg-[#0B0F19] border-b border-slate-200 dark:border-white/[0.1] font-mono font-black text-slate-600 dark:text-slate-300 sticky top-0 z-10 select-none">
+                  <tr>
+                    <th className="px-3 py-2 w-28">CÓDIGO</th>
+                    <th className="px-3 py-2 min-w-[200px]">DESCRIPCIÓN</th>
+                    <th className="px-2.5 py-2 text-right w-28">PRECIO ($)</th>
+                    <th className="px-2 py-2 text-center w-28">CANTIDAD</th>
+                    <th className="px-2.5 py-2 text-right text-emerald-600 dark:text-emerald-400 w-28">SUBTOTAL ($)</th>
+                    <th className="px-2.5 py-2 text-right text-blue-600 dark:text-blue-400 w-32">SUBTOTAL (BS)</th>
+                    <th className="px-2 py-2 text-center w-12">QUITAR</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
                   {items.map((item, index) => {
-                    const pDivisa = item.precio_divisa || item.precio || 0;
+                    const pDivisa = item.precio_divisa !== undefined && item.precio_divisa !== '' ? parseFloat(item.precio_divisa) : (parseFloat(item.precio) || 0);
                     const qty = item.cantidad || 1;
                     const aplicaIva = item.aplica_iva !== false;
+                    const esManual = item.codigo_corto === 'MANUAL';
 
                     let precioUnitarioUSD = pDivisa;
                     let subTotalUSD = qty * pDivisa;
@@ -1628,48 +1434,54 @@ export default function FacturadorForm({
                       precioUnitarioUSD = pDivisa * factorIva;
                       subTotalUSD = qty * precioUnitarioUSD;
                       subTotalBs = subTotalUSD * tasaActivaNum;
-                    } else {
-                      precioUnitarioUSD = pDivisa;
-                      subTotalUSD = qty * pDivisa;
-                      subTotalBs = subTotalUSD * tasaActivaNum;
                     }
 
                     return (
-                      <div
-                        key={item.id || index}
-                        className="p-3 bg-slate-50/70 dark:bg-white/[0.02] rounded-xl border border-slate-200 dark:border-white/[0.08] space-y-2 shadow-2xs"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <span className="font-mono font-black text-xs text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-0.5 rounded-md border border-red-500/20 inline-block">
-                              {item.codigo_corto}
-                            </span>
-                            <div className="font-bold uppercase text-xs text-slate-900 dark:text-white mt-1 leading-snug">
+                      <tr key={item.id || index} className="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
+                        <td className="px-3 py-2 whitespace-nowrap font-mono font-bold text-red-600 dark:text-red-400">
+                          {item.codigo_corto}
+                        </td>
+                        <td className="px-3 py-2">
+                          {esManual ? (
+                            <input
+                              type="text"
+                              value={item.descripcion}
+                              onChange={(e) => handleItemManualChange(index, 'descripcion', e.target.value)}
+                              placeholder="Escribe la descripción del repuesto o servicio..."
+                              className="w-full h-8 px-2 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-lg text-xs font-semibold uppercase text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+                            />
+                          ) : (
+                            <div className="font-bold uppercase text-slate-900 dark:text-white leading-tight">
                               {item.descripcion}
                             </div>
-                            <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                              P. Unit: {formatUSD(precioUnitarioUSD)}
+                          )}
+                        </td>
+                        <td className="px-2.5 py-2 text-right">
+                          {esManual ? (
+                            <div className="relative">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.precio_divisa || ''}
+                                onChange={(e) => handleItemManualChange(index, 'precio_divisa', e.target.value)}
+                                placeholder="0.00"
+                                className="w-24 h-8 px-2 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-lg text-xs font-mono font-bold text-right text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+                              />
                             </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => eliminarItem(index)}
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl cursor-pointer transition-colors shrink-0"
-                            title="Eliminar producto del carrito"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Fila inferior: Controles de Cantidad + Subtotales */}
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 dark:border-white/[0.06] gap-2">
-                          <div className="inline-flex items-center bg-white dark:bg-[#0B0F19] border border-slate-300 dark:border-white/10 rounded-xl p-0.5 shadow-2xs">
+                          ) : (
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                              {formatUSD(precioUnitarioUSD)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2 text-center whitespace-nowrap">
+                          <div className="inline-flex items-center bg-slate-100 dark:bg-[#0B0F19] border border-slate-300 dark:border-white/10 rounded-lg p-0.5">
                             <button
                               type="button"
                               onClick={() => modificarCantidad(index, -1)}
-                              className="w-7 h-7 flex items-center justify-center text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-white/10"
+                              className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                             >
-                              <Minus className="w-3.5 h-3.5" />
+                              <Minus className="w-3 h-3" />
                             </button>
                             <span className="w-8 text-center font-mono font-black text-xs text-slate-900 dark:text-white">
                               {item.cantidad || 1}
@@ -1677,38 +1489,147 @@ export default function FacturadorForm({
                             <button
                               type="button"
                               onClick={() => modificarCantidad(index, 1)}
-                              className="w-7 h-7 flex items-center justify-center text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-white/10"
+                              className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-3 h-3" />
                             </button>
                           </div>
+                        </td>
+                        <td className="px-2.5 py-2 text-right font-mono font-black text-xs text-emerald-600 dark:text-emerald-400">
+                          {formatUSD(subTotalUSD)}
+                        </td>
+                        <td className="px-2.5 py-2 text-right font-mono font-bold text-xs text-blue-600 dark:text-blue-400">
+                          {formatVES(subTotalBs)}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => eliminarItem(index)}
+                            className="p-1 text-slate-400 hover:text-red-500 cursor-pointer rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                            title="Eliminar renglón"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
-                          <div className="text-right space-y-0.5">
-                            <div className="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400">
-                              {formatUSD(subTotalUSD)}
+              {/* Vista Móvil del Carrito */}
+              <div className="md:hidden divide-y divide-slate-100 dark:divide-white/[0.08] p-2 space-y-2.5">
+                {items.map((item, index) => {
+                  const pDivisa = item.precio_divisa !== undefined && item.precio_divisa !== '' ? parseFloat(item.precio_divisa) : (parseFloat(item.precio) || 0);
+                  const qty = item.cantidad || 1;
+                  const aplicaIva = item.aplica_iva !== false;
+                  const esManual = item.codigo_corto === 'MANUAL';
+
+                  let precioUnitarioUSD = pDivisa;
+                  let subTotalUSD = qty * pDivisa;
+                  let subTotalBs = subTotalUSD * tasaActivaNum;
+
+                  if (formaPago === 'CASHEA') {
+                    const factorCashea = 1.12;
+                    const factorIva = aplicaIva ? 1.16 : 1.0;
+                    precioUnitarioUSD = pDivisa * factorCashea * factorIva;
+                    subTotalUSD = qty * precioUnitarioUSD;
+                    subTotalBs = subTotalUSD * tasaActivaNum;
+                  } else if (formaPago === 'PAGO_MOVIL' || formaPago === 'CREDITO_TIENDA') {
+                    const factorIva = aplicaIva ? 1.16 : 1.0;
+                    precioUnitarioUSD = pDivisa * factorIva;
+                    subTotalUSD = qty * precioUnitarioUSD;
+                    subTotalBs = subTotalUSD * tasaActivaNum;
+                  }
+
+                  return (
+                    <div
+                      key={item.id || index}
+                      className="p-3 bg-slate-50/70 dark:bg-white/[0.02] rounded-xl border border-slate-200 dark:border-white/[0.08] space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <span className="font-mono font-black text-xs text-red-600 bg-red-500/10 px-2 py-0.5 rounded-md">
+                            {item.codigo_corto}
+                          </span>
+                          {esManual ? (
+                            <input
+                              type="text"
+                              value={item.descripcion}
+                              onChange={(e) => handleItemManualChange(index, 'descripcion', e.target.value)}
+                              placeholder="Descripción del repuesto..."
+                              className="w-full h-8 px-2 mt-1 bg-white dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-lg text-xs font-semibold uppercase"
+                            />
+                          ) : (
+                            <div className="font-bold uppercase text-xs text-slate-900 dark:text-white mt-1 leading-snug">
+                              {item.descripcion}
                             </div>
-                            <div className="font-mono font-bold text-[11px] text-blue-600 dark:text-blue-400">
-                              {formatVES(subTotalBs)}
-                            </div>
+                          )}
+                          <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                            P. Unit: {formatUSD(precioUnitarioUSD)}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => eliminarItem(index)}
+                          className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 dark:border-white/[0.06] gap-2">
+                        <div className="inline-flex items-center bg-white dark:bg-[#0B0F19] border border-slate-300 dark:border-white/10 rounded-xl p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => modificarCantidad(index, -1)}
+                            className="w-7 h-7 flex items-center justify-center text-slate-600 dark:text-slate-300"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center font-mono font-black text-xs text-slate-900 dark:text-white">
+                            {item.cantidad || 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => modificarCantidad(index, 1)}
+                            className="w-7 h-7 flex items-center justify-center text-slate-600 dark:text-slate-300"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="font-mono font-black text-sm text-emerald-600">
+                            {formatUSD(subTotalUSD)}
+                          </div>
+                          <div className="font-mono font-bold text-[11px] text-blue-600">
+                            {formatVES(subTotalBs)}
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          )}
-        </div>
 
-        {/* ========================================================================= */}
-        {/* PASO 1: SELECCIONA LA MODALIDAD DE PAGO (ANTES DE TOTALES)                */}
-        {/* ========================================================================= */}
-        <div className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-white/10">
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. MODALIDAD DE PAGO Y LIQUIDACIÓN                                        */}
+      {/* ========================================================================= */}
+      <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.08] shadow-md bg-white dark:bg-[#0B0F19]/95 space-y-4">
+        
+        {/* PASO 1: SELECCIONA LA MODALIDAD DE PAGO */}
+        <div className="space-y-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[11px] font-black shadow-sm">1</span>
-              <span>Selecciona la Modalidad de Pago:</span>
+              <span>Modalidad de Pago:</span>
             </span>
             <span className="text-[11px] font-sans text-slate-400 font-medium">
               Ajusta automáticamente impuestos, recargos y tipo de documento
@@ -1723,7 +1644,7 @@ export default function FacturadorForm({
               className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden ${
                 formaPago === 'EFECTIVO'
                   ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white border-emerald-400 shadow-lg scale-[1.02] ring-2 ring-emerald-500/30'
-                  : 'bg-white dark:bg-[#06080F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/50 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10'
+                  : 'bg-white dark:bg-[#06080F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/50 hover:bg-emerald-50/30'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -1738,9 +1659,6 @@ export default function FacturadorForm({
                   Nota de Entrega · Sin formato fiscal
                 </div>
               </div>
-              {formaPago === 'EFECTIVO' && (
-                <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white shadow-sm" />
-              )}
             </button>
 
             {/* PAGO MÓVIL / PUNTO */}
@@ -1750,7 +1668,7 @@ export default function FacturadorForm({
               className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden ${
                 formaPago === 'PAGO_MOVIL'
                   ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-blue-400 shadow-lg scale-[1.02] ring-2 ring-blue-500/30'
-                  : 'bg-white dark:bg-[#06080F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/10'
+                  : 'bg-white dark:bg-[#06080F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-blue-500/50 hover:bg-blue-50/30'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -1765,9 +1683,6 @@ export default function FacturadorForm({
                   Factura Fiscal SENIAT
                 </div>
               </div>
-              {formaPago === 'PAGO_MOVIL' && (
-                <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white shadow-sm" />
-              )}
             </button>
 
             {/* CASHEA */}
@@ -1777,7 +1692,7 @@ export default function FacturadorForm({
               className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden ${
                 formaPago === 'CASHEA'
                   ? 'bg-gradient-to-br from-purple-600 to-violet-800 text-white border-purple-400 shadow-lg scale-[1.02] ring-2 ring-purple-500/30'
-                  : 'bg-white dark:bg-[#06080F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-purple-500/50 hover:bg-purple-50/30 dark:hover:bg-purple-950/10'
+                  : 'bg-white dark:bg-[#06080F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-purple-500/50 hover:bg-purple-50/30'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -1792,9 +1707,6 @@ export default function FacturadorForm({
                   12% Recargo Integrado + IVA
                 </div>
               </div>
-              {formaPago === 'CASHEA' && (
-                <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white shadow-sm" />
-              )}
             </button>
 
             {/* CRÉDITO TIENDA */}
@@ -1804,7 +1716,7 @@ export default function FacturadorForm({
               className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden ${
                 formaPago === 'CREDITO_TIENDA'
                   ? 'bg-gradient-to-br from-amber-600 to-yellow-700 text-white border-amber-400 shadow-lg scale-[1.02] ring-2 ring-amber-500/30'
-                  : 'bg-white dark:bg-[#06080F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-amber-500/50 hover:bg-amber-50/30 dark:hover:bg-amber-950/10'
+                  : 'bg-white dark:bg-[#06080F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-amber-500/50 hover:bg-amber-50/30'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -1819,20 +1731,15 @@ export default function FacturadorForm({
                   Cuentas por Cobrar · Con IVA
                 </div>
               </div>
-              {formaPago === 'CREDITO_TIENDA' && (
-                <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white shadow-sm" />
-              )}
             </button>
           </div>
         </div>
 
-        {/* ========================================================================= */}
-        {/* PASO 2: TICKET DE LIQUIDACIÓN UNIFICADO + TOTAL A PAGAR Y EMISIÓN         */}
-        {/* ========================================================================= */}
+        {/* PASO 2: TICKET DE LIQUIDACIÓN FISCAL & TOTALES A PAGAR Y EMISIÓN */}
         <div className="rounded-2xl bg-slate-50/90 dark:bg-[#06080F] border-2 border-slate-200 dark:border-white/[0.08] p-4 sm:p-5 shadow-sm">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
             
-            {/* LADO IZQUIERDO: DETALLE DE LIQUIDACIÓN FISCAL (TICKET ORDENADO) */}
+            {/* LADO IZQUIERDO: DETALLE DE LIQUIDACIÓN FISCAL */}
             <div className="lg:col-span-7 flex flex-col justify-between space-y-3">
               <div>
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/10 flex-wrap gap-2">
@@ -1855,7 +1762,6 @@ export default function FacturadorForm({
                   </span>
                 </div>
 
-                {/* Filas del desglose */}
                 <div className="space-y-2 pt-2 text-xs font-mono">
                   {/* Subtotal neto */}
                   <div className="flex items-center justify-between py-1 text-slate-600 dark:text-slate-400">
@@ -1908,7 +1814,7 @@ export default function FacturadorForm({
                 </div>
               </div>
 
-              {/* Tasa activa oficial */}
+              {/* Tasa activa oficial aplicada */}
               <div className="pt-2 border-t border-slate-200 dark:border-white/[0.08] flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-sans">
                 <span className="flex items-center gap-1.5">
                   <img src="/bcv_logo.svg" alt="BCV" className="w-3.5 h-3.5 object-contain" />
@@ -1930,7 +1836,6 @@ export default function FacturadorForm({
                     ? 'bg-emerald-500/[0.05] border-emerald-500/30 dark:bg-emerald-950/20'
                     : 'bg-amber-500/[0.05] border-amber-500/30 dark:bg-amber-950/20'
             }`}>
-              {/* Montos */}
               <div className="space-y-1 text-center sm:text-right">
                 <div className="text-[11px] font-mono font-black text-slate-500 uppercase tracking-wider">
                   TOTAL FINAL A COBRAR
@@ -1954,7 +1859,7 @@ export default function FacturadorForm({
                 </div>
               </div>
 
-              {/* Botones de Acción */}
+              {/* Botones de Emisión */}
               <div className="pt-3 mt-3 border-t border-slate-200 dark:border-white/10 flex flex-col gap-2">
                 <button
                   type="button"
@@ -2002,7 +1907,7 @@ export default function FacturadorForm({
 
       </div>
 
-      {/* MODAL ZOOM DE FOTO DE REFERENCIA AUTOZONE */}
+      {/* MODAL ZOOM DE FOTO DE REFERENCIA */}
       {repuestoParaZoom && (
         <ModalZoomRepuesto
           producto={repuestoParaZoom}
