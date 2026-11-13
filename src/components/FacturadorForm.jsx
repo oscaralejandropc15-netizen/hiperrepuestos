@@ -264,50 +264,20 @@ export default function FacturadorForm({
   const [mostrarFiltrosAvanzados, setMostrarFiltrosAvanzados] = useState(false);
   const [repuestoParaZoom, setRepuestoParaZoom] = useState(null);
 
-  const [listaLineas, setListaLineas] = useState([
-    'Tren Delantero y Dirección', 'Suspensión', 'Motor', 'Frenos', 
-    'Eléctrico y Encendido', 'Tracción y Transmisión', 'Refrigeración', 'General'
-  ]);
-  const [listaMarcas, setListaMarcas] = useState([]);
-  const [listaVehiculos, setListaVehiculos] = useState([]);
+  const [todosLosProductosMeta, setTodosLosProductosMeta] = useState([]);
   const [productosEncontrados, setProductosEncontrados] = useState([]);
   const [cargandoProductos, setCargandoProductos] = useState(false);
   const [ultimoAgregadoId, setUltimoAgregadoId] = useState(null);
 
-  // Sublíneas disponibles dinámicas según la línea seleccionada
-  const sublineasDisponibles = useMemo(() => {
-    return obtenerSublineasParaLinea(filtroLinea, productosEncontrados);
-  }, [filtroLinea, productosEncontrados]);
-
-  // Selector rápido y registro de clientes
-  const [clienteEncontrado, setClienteEncontrado] = useState(null);
-  const [buscandoCliente, setBuscandoCliente] = useState(false);
-  const [listaClientesRegistrados, setListaClientesRegistrados] = useState([]);
-  const [mostrarListaClientes, setMostrarListaClientes] = useState(false);
-  const [guardandoClienteManual, setGuardandoClienteManual] = useState(false);
-  const [clienteGuardadoExitoso, setClienteGuardadoExitoso] = useState(false);
-  const clientSelectorRef = useRef(null);
-  const inputBusquedaRef = useRef(null);
-
-  // Cargar dinámicamente opciones de líneas, marcas y vehículos
+  // Cargar dinámicamente el catálogo de productos para poblar los filtros en cascada
   useEffect(() => {
     async function cargarOpcionesFiltros() {
       try {
         const { data, error } = await supabase
           .from('productos')
-          .select('linea, sublinea, marca_producto, marca, modelo_vehiculo');
+          .select('linea, sublinea, marca_producto, marca, modelo_vehiculo, stock');
         if (data && !error) {
-          const lins = Array.from(new Set(data.map(d => d.linea).filter(Boolean)))
-            .filter(l => l.toLowerCase() !== 'tren delantero')
-            .sort();
-          const marcas = Array.from(new Set(data.map(d => (d.marca_producto || d.marca || '').trim().toUpperCase()).filter(Boolean))).sort();
-          const vehs = Array.from(new Set(data.flatMap(d => desglosarModelosVehiculo(d.modelo_vehiculo)))).sort();
-
-          if (lins.length > 0) {
-            setListaLineas(Array.from(new Set([...lins, 'Frenos', 'Carrocería', 'Accesorios'])).sort());
-          }
-          if (marcas.length > 0) setListaMarcas(marcas);
-          if (vehs.length > 0) setListaVehiculos(vehs);
+          setTodosLosProductosMeta(data);
         }
       } catch (err) {
         console.warn('Error cargando opciones de filtros:', err);
@@ -315,6 +285,53 @@ export default function FacturadorForm({
     }
     cargarOpcionesFiltros();
   }, []);
+
+  // 1. Líneas disponibles (únicamente las que tienen repuestos en inventario)
+  const listaLineas = useMemo(() => {
+    const lins = Array.from(new Set(todosLosProductosMeta.map(d => d.linea).filter(Boolean)))
+      .filter(l => l.toLowerCase() !== 'tren delantero')
+      .sort();
+    return lins.length > 0 ? lins : [
+      'Tren Delantero y Dirección', 'Suspensión', 'Motor', 'Frenos', 
+      'Eléctrico y Encendido', 'Tracción y Transmisión', 'Refrigeración', 'General'
+    ];
+  }, [todosLosProductosMeta]);
+
+  // 2. Sublíneas en cascada (solo las que pertenecen a la Línea elegida)
+  const sublineasDisponibles = useMemo(() => {
+    let prods = todosLosProductosMeta;
+    if (filtroLinea) {
+      prods = prods.filter(p => p.linea && p.linea.toLowerCase().includes(filtroLinea.toLowerCase()));
+    }
+    return Array.from(new Set(prods.map(d => d.sublinea).filter(Boolean))).sort();
+  }, [filtroLinea, todosLosProductosMeta]);
+
+  // 3. Marcas en cascada (SOLO las marcas de la Línea y Sublínea seleccionadas)
+  const marcasDisponibles = useMemo(() => {
+    let prods = todosLosProductosMeta;
+    if (filtroLinea) {
+      prods = prods.filter(p => p.linea && p.linea.toLowerCase().includes(filtroLinea.toLowerCase()));
+    }
+    if (filtroSublinea) {
+      prods = prods.filter(p => p.sublinea && p.sublinea.toLowerCase().includes(filtroSublinea.toLowerCase()));
+    }
+    return Array.from(new Set(prods.map(d => (d.marca_producto || d.marca || '').trim().toUpperCase()).filter(Boolean))).sort();
+  }, [filtroLinea, filtroSublinea, todosLosProductosMeta]);
+
+  // 4. Vehículos en cascada (SOLO los modelos compatibles con los filtros activos)
+  const vehiculosDisponibles = useMemo(() => {
+    let prods = todosLosProductosMeta;
+    if (filtroLinea) {
+      prods = prods.filter(p => p.linea && p.linea.toLowerCase().includes(filtroLinea.toLowerCase()));
+    }
+    if (filtroSublinea) {
+      prods = prods.filter(p => p.sublinea && p.sublinea.toLowerCase().includes(filtroSublinea.toLowerCase()));
+    }
+    if (filtroMarca) {
+      prods = prods.filter(p => (p.marca_producto || p.marca || '').toUpperCase().includes(filtroMarca.toUpperCase()));
+    }
+    return Array.from(new Set(prods.flatMap(d => desglosarModelosVehiculo(d.modelo_vehiculo)))).sort();
+  }, [filtroLinea, filtroSublinea, filtroMarca, todosLosProductosMeta]);
 
   // Tasa numérica activa limpia (con exactamente 2 decimales de precisión)
   const tasaActivaNum = useMemo(() => {
@@ -1178,6 +1195,8 @@ export default function FacturadorForm({
                 onChange={(val) => {
                   setFiltroLinea(val);
                   setFiltroSublinea('');
+                  setFiltroMarca('');
+                  setFiltroVehiculo('');
                 }}
                 options={listaLineas}
               />
@@ -1187,7 +1206,11 @@ export default function FacturadorForm({
                 placeholder="Elige tipo..."
                 allLabel="Todos los Tipos"
                 value={filtroSublinea}
-                onChange={(val) => setFiltroSublinea(val)}
+                onChange={(val) => {
+                  setFiltroSublinea(val);
+                  setFiltroMarca('');
+                  setFiltroVehiculo('');
+                }}
                 options={sublineasDisponibles}
               />
               <SearchableFilterSelect
@@ -1196,8 +1219,11 @@ export default function FacturadorForm({
                 placeholder="Elige marca..."
                 allLabel="Todas las Marcas"
                 value={filtroMarca}
-                onChange={(val) => setFiltroMarca(val)}
-                options={listaMarcas}
+                onChange={(val) => {
+                  setFiltroMarca(val);
+                  setFiltroVehiculo('');
+                }}
+                options={marcasDisponibles}
               />
               <SearchableFilterSelect
                 label="4. Vehículo:"
@@ -1206,7 +1232,7 @@ export default function FacturadorForm({
                 allLabel="Todos los Vehículos"
                 value={filtroVehiculo}
                 onChange={(val) => setFiltroVehiculo(val)}
-                options={listaVehiculos}
+                options={vehiculosDisponibles}
               />
             </div>
           </div>
