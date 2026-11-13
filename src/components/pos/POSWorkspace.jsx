@@ -1369,49 +1369,106 @@ export default function POSWorkspace({
           <div className="lg:col-span-5 bg-slate-50 dark:bg-[#06080F] border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 space-y-3 font-mono text-xs">
             
             <div className="space-y-1.5 pb-3 border-b border-slate-200 dark:border-white/10">
+              {/* Subtotal Base */}
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                <span>Subtotal Neto:</span>
+                <span>{formaPago === 'EFECTIVO' ? 'Subtotal (0% IVA):' : 'Subtotal Neto:'}</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {formatUSD(totals.baseImponible)} / {formatVES(totals.baseImponibleBs)}
+                  {formaPago === 'PAGO_MOVIL'
+                    ? `${formatVES(totals.baseImponibleBs)} / ${formatUSD(totals.baseImponible)}`
+                    : `${formatUSD(totals.baseImponible)} / ${formatVES(totals.baseImponibleBs)}`}
                 </span>
               </div>
 
-              {formaPago === 'CASHEA' && (
-                <div className="flex justify-between text-purple-600 font-bold">
-                  <span>Recargo Cashea (12%):</span>
-                  <span>+{formatUSD((totals.totalUSD || 0) - (totals.baseImponible || 0))}</span>
-                </div>
-              )}
-
+              {/* IVA 16% (para todo excepto Efectivo con nota de entrega) */}
               {formaPago !== 'EFECTIVO' && (
                 <div className="flex justify-between text-slate-500 dark:text-slate-400">
                   <span>IVA (16%):</span>
                   <span className="font-bold text-slate-800 dark:text-slate-200">
-                    +{formatUSD(totals.iva)} / {formatVES(totals.ivaBs)}
+                    {formaPago === 'PAGO_MOVIL'
+                      ? `+${formatVES(totals.ivaBs)} / ${formatUSD(totals.iva)}`
+                      : `+${formatUSD(totals.iva)} / ${formatVES(totals.ivaBs)}`}
                   </span>
+                </div>
+              )}
+
+              {/* Recargo Cashea (12%) - Sobre precio con IVA */}
+              {formaPago === 'CASHEA' && (
+                <div className="flex justify-between text-purple-600 dark:text-purple-400 font-bold">
+                  <span>Recargo Cashea (12%):</span>
+                  <span>+{formatUSD(totals.recargoCasheaUSD)} / {formatVES(totals.recargoCasheaBs)}</span>
                 </div>
               )}
             </div>
 
-            {/* Total Grande Destacado */}
+            {/* Total Grande Destacado Adaptativo según Forma de Pago */}
             <div className="flex items-end justify-between pt-1">
               <div>
                 <span className="text-[11px] font-heading font-black text-slate-400 uppercase tracking-wider block">
-                  Total a Cobrar
+                  {formaPago === 'PAGO_MOVIL' 
+                    ? 'Total a Cobrar (Bs.)' 
+                    : formaPago === 'CASHEA'
+                    ? 'Total Cashea ($)'
+                    : formaPago === 'EFECTIVO'
+                    ? 'Total en Efectivo ($)'
+                    : 'Total a Cobrar'}
                 </span>
                 <span className="text-[10px] text-slate-400">
                   Tasa: {formatVES(tasaActivaNum)}
                 </span>
               </div>
+
               <div className="text-right">
-                <div className="text-2xl sm:text-3xl font-heading font-black text-red-600 dark:text-red-400 leading-tight">
-                  {formatUSD(totals.totalUSD)}
-                </div>
-                <div className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatVES(totals.totalBs)}
-                </div>
+                {formaPago === 'PAGO_MOVIL' ? (
+                  /* PAGO MÓVIL: BOLÍVARES EN GRANDE, DÓLARES EN PEQUEÑO ABAJO */
+                  <>
+                    <div className="text-2xl sm:text-3xl font-heading font-black text-blue-600 dark:text-blue-400 leading-tight">
+                      {formatVES(totals.totalBs)}
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400">
+                      Ref: {formatUSD(totals.totalUSD)}
+                    </div>
+                  </>
+                ) : formaPago === 'CASHEA' ? (
+                  /* CASHEA: TOTAL EN DÓLARES EN GRANDE CON RECARGO Y BS ABAJO */
+                  <>
+                    <div className="text-2xl sm:text-3xl font-heading font-black text-purple-600 dark:text-purple-400 leading-tight">
+                      {formatUSD(totals.totalUSD)}
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-purple-600/80 dark:text-purple-300">
+                      {formatVES(totals.totalBs)}
+                    </div>
+                  </>
+                ) : formaPago === 'EFECTIVO' ? (
+                  /* EFECTIVO: DÓLARES EN GRANDE, BS ABAJO */
+                  <>
+                    <div className="text-2xl sm:text-3xl font-heading font-black text-emerald-600 dark:text-emerald-400 leading-tight">
+                      {formatUSD(totals.totalUSD)}
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-slate-400">
+                      {formatVES(totals.totalBs)}
+                    </div>
+                  </>
+                ) : (
+                  /* CRÉDITO TIENDA U OTRO */
+                  <>
+                    <div className="text-2xl sm:text-3xl font-heading font-black text-amber-600 dark:text-amber-400 leading-tight">
+                      {formatUSD(totals.totalUSD)}
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-slate-400">
+                      {formatVES(totals.totalBs)}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
+
+            {/* Fila extra explicativa para Cashea (Cuota Inicial + 3 Cuotas) */}
+            {formaPago === 'CASHEA' && (
+              <div className="mt-2 pt-2 border-t border-purple-200/50 dark:border-purple-500/20 bg-purple-500/10 rounded-xl p-2.5 text-center sm:text-left flex flex-wrap items-center justify-between gap-1 text-[11px] text-purple-700 dark:text-purple-300 font-bold">
+                <span>Inicial Cashea (~40%): {formatUSD(totals.totalUSD * 0.4)} ({formatVES(totals.totalBs * 0.4)})</span>
+                <span className="opacity-80">+ 3 cuotas de {formatUSD((totals.totalUSD * 0.6) / 3)}</span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -141,56 +141,52 @@ export function calculateTotals(items = [], tasaBCV = 1, monedaIngreso = 'USD', 
     baseImponibleUSD += qty * priceUSD;
   });
 
-  const subtotalUSD = baseImponibleUSD;
+  const subtotalNetoUSD = Math.round(baseImponibleUSD * 100) / 100;
+  const subtotalNetoBs = Math.round(subtotalNetoUSD * rate * 100) / 100;
 
   const esEfectivo = formaPago === 'EFECTIVO';
   const esPagoMovil = formaPago === 'PAGO_MOVIL';
   const esCashea = formaPago === 'CASHEA';
   const esCreditoTienda = formaPago === 'CREDITO_TIENDA' || formaPago === 'CRÉDITO' || formaPago === 'CREDITO';
 
-  // Recargo Cashea (12% si la forma de pago es CASHEA)
-  const recargoCasheaUSD = esCashea ? subtotalUSD * 0.12 : 0;
-  const nuevoSubtotalCasheaUSD = subtotalUSD + recargoCasheaUSD;
+  // 1. IVA (16%):
+  // Si es Efectivo con nota de entrega directa, IVA 0%.
+  // Si es Pago Móvil, Cashea, Crédito o Factura Fiscal, 16% IVA sobre la base imponible.
+  const tieneIva = !esEfectivo || tipoDocumento === 'factura_fiscal';
+  const ivaUSD = tieneIva ? Math.round(subtotalNetoUSD * 0.16 * 100) / 100 : 0;
+  const ivaBs = Math.round(ivaUSD * rate * 100) / 100;
 
-  // IVA: 16% para Pago Móvil, Cashea y Crédito Tienda (Fiados)
-  // Solo Efectivo (nota de entrega directa) se mantiene al 0% IVA
-  let ivaUSD = 0;
-  if (esPagoMovil || esCreditoTienda) {
-    ivaUSD = subtotalUSD * 0.16;
-  } else if (esCashea) {
-    ivaUSD = nuevoSubtotalCasheaUSD * 0.16;
-  } else if (tipoDocumento === 'factura_fiscal') {
-    ivaUSD = subtotalUSD * 0.16;
-  } else {
-    ivaUSD = 0;
-  }
+  const totalBaseConIvaUSD = Math.round((subtotalNetoUSD + ivaUSD) * 100) / 100;
+  const totalBaseConIvaBs = Math.round(totalBaseConIvaUSD * rate * 100) / 100;
 
-  const totalUSD = (esCashea ? nuevoSubtotalCasheaUSD : subtotalUSD) + ivaUSD;
+  // 2. Recargo Cashea (12%):
+  // Se aplica el 12% sobre el precio regular con IVA ($185.60 * 0.12 = $22.27)
+  const recargoCasheaUSD = esCashea ? Math.round(totalBaseConIvaUSD * 0.12 * 100) / 100 : 0;
+  const recargoCasheaBs = Math.round(recargoCasheaUSD * rate * 100) / 100;
 
-  // Equivalentes en Bolívares a tasa oficial BCV
-  const subtotalBs = subtotalUSD * rate;
-  const nuevoSubtotalCasheaBs = nuevoSubtotalCasheaUSD * rate;
-  const baseImponibleBs = (esCashea ? nuevoSubtotalCasheaUSD : baseImponibleUSD) * rate;
-  const recargoCasheaBs = recargoCasheaUSD * rate;
-  const ivaBs = ivaUSD * rate;
-  const totalBs = totalUSD * rate;
+  const totalUSD = Math.round((totalBaseConIvaUSD + recargoCasheaUSD) * 100) / 100;
+  const totalBs = Math.round(totalUSD * rate * 100) / 100;
 
   return {
-    subtotalUSD: Math.round(subtotalUSD * 100) / 100,
-    subtotalBs: Math.round(subtotalBs * 100) / 100,
-    subtotalConCasheaUSD: Math.round(nuevoSubtotalCasheaUSD * 100) / 100,
-    subtotalConCasheaBs: Math.round(nuevoSubtotalCasheaBs * 100) / 100,
-    baseImponible: Math.round((esCashea ? nuevoSubtotalCasheaUSD : baseImponibleUSD) * 100) / 100,
-    baseImponibleBs: Math.round(baseImponibleBs * 100) / 100,
-    recargoCashea: Math.round(recargoCasheaUSD * 100) / 100,
-    recargoCasheaUSD: Math.round(recargoCasheaUSD * 100) / 100,
-    recargoCasheaBs: Math.round(recargoCasheaBs * 100) / 100,
-    iva: Math.round(ivaUSD * 100) / 100,
-    montoIvaUSD: Math.round(ivaUSD * 100) / 100,
-    ivaUSD: Math.round(ivaUSD * 100) / 100,
-    ivaBs: Math.round(ivaBs * 100) / 100,
-    totalUSD: Math.round(totalUSD * 100) / 100,
-    totalBs: Math.round(totalBs * 100) / 100,
+    subtotalUSD: subtotalNetoUSD,
+    subtotalBs: subtotalNetoBs,
+    subtotalNetoUSD,
+    subtotalNetoBs,
+    baseImponible: subtotalNetoUSD,
+    baseImponibleBs: subtotalNetoBs,
+    totalBaseConIvaUSD,
+    totalBaseConIvaBs,
+    recargoCashea: recargoCasheaUSD,
+    recargoCasheaUSD,
+    recargoCasheaBs,
+    subtotalConCasheaUSD: totalUSD,
+    subtotalConCasheaBs: totalBs,
+    iva: ivaUSD,
+    ivaUSD,
+    ivaBs,
+    montoIvaUSD: ivaUSD,
+    totalUSD,
+    totalBs,
   };
 }
 
