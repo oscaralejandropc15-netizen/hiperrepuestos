@@ -26,7 +26,10 @@ import {
   ArrowRight,
   Layers,
   Sparkles,
-  Receipt
+  Receipt,
+  Printer,
+  Zap,
+  FileText
 } from 'lucide-react';
 import { formatUSD, formatVES, parseVenezuelanNumber, generarVariantesCedula } from '../../lib/formatters';
 import { obtenerFotoRepuesto } from '../../lib/repuestosImagenes';
@@ -86,9 +89,6 @@ export default function POSWorkspace({
   const [productosEncontrados, setProductosEncontrados] = useState([]);
   const [cargandoProductos, setCargandoProductos] = useState(false);
   const [ultimoAgregadoId, setUltimoAgregadoId] = useState(null);
-
-  // Control del drawer de carrito en teléfono
-  const [drawerCarritoAbierto, setDrawerCarritoAbierto] = useState(false);
 
   // Tasa BCV numérica limpia
   const tasaActivaNum = useMemo(() => {
@@ -247,6 +247,26 @@ export default function POSWorkspace({
   const limpiarDatosCliente = () => {
     setCliente({ id: null, documento: '', nombre: '', telefono: '', direccion: '' });
     setClienteEncontrado(null);
+    setSugerenciasCedula([]);
+    setSugerenciasNombre([]);
+    setMostrarSugerenciasCedula(false);
+    setMostrarSugerenciasNombre(false);
+  };
+
+  // Llenar consumidor final de contado instantáneo
+  const setConsumidorFinal = () => {
+    setCliente({
+      id: null,
+      documento: 'V-00000000',
+      nombre: 'CLIENTE DE CONTADO',
+      telefono: '0414-0000000',
+      direccion: 'TIENDA MOSTRADOR'
+    });
+    setClienteEncontrado({
+      id: null,
+      cedula_rif: 'V-00000000',
+      nombre: 'CLIENTE DE CONTADO'
+    });
     setSugerenciasCedula([]);
     setSugerenciasNombre([]);
     setMostrarSugerenciasCedula(false);
@@ -603,38 +623,70 @@ export default function POSWorkspace({
   const formularioValido = (cliente.nombre || '').trim().length > 0 && (cliente.documento || '').trim().length > 0 && items.length > 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-6xl mx-auto pb-12">
 
       {/* Alerta de Error si ocurre */}
       {error && (
-        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-500 text-xs sm:text-sm flex items-center gap-2.5">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-600 dark:text-rose-400 text-xs sm:text-sm flex items-center gap-2.5 animate-in fade-in">
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <span className="font-semibold">{error}</span>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* BANNER SUPERIOR ESTILO MONTANO SYSTEM                                     */}
+      {/* BARRA SUPERIOR DE CONTROL: TIPO DE COMPROBANTE Y ACCIONES RÁPIDAS         */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-black uppercase tracking-wider bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200/80 dark:border-red-500/20 mb-2">
-            <ShoppingBag className="w-3.5 h-3.5" />
-            Mostrador de Ventas
-          </span>
-          <h1 className="font-heading font-black text-xl sm:text-2xl text-slate-900 dark:text-white tracking-tight">
-            Punto de Venta y Facturación
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Consulta rápida de repuestos, carga automática de clientes tipo a2 y liquidación fiscal instantánea.
-          </p>
+      <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/20 shrink-0">
+            <Receipt className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-heading font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight">
+                Punto de Venta y Facturación
+              </h1>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                BCV: {formatVES(tasaActivaNum)} Bs/$
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Flujo unificado: Cliente ➔ Renglones de la Venta ➔ Cobro y Cierre
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 self-stretch md:self-auto">
+        {/* Tipo de Documento y Botones Rápidos */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex bg-slate-100 dark:bg-white/[0.06] rounded-xl p-1 border border-slate-200 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setTipoDocumento('nota_entrega')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                tipoDocumento === 'nota_entrega'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Nota de Entrega
+            </button>
+            <button
+              type="button"
+              onClick={() => setTipoDocumento('factura_fiscal')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                tipoDocumento === 'factura_fiscal'
+                  ? 'bg-red-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Factura Fiscal
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={agregarItemManual}
-            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 text-red-500" />
             <span>+ Renglón Manual</span>
@@ -644,33 +696,240 @@ export default function POSWorkspace({
             <button
               type="button"
               onClick={onLimpiar}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 dark:bg-white/[0.06] dark:hover:bg-rose-500/10 dark:hover:text-rose-400 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-              title="Limpiar todo el mostrador"
+              className="inline-flex items-center gap-1 px-3 py-2 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 text-xs font-bold transition-colors cursor-pointer"
+              title="Limpiar mostrador y comenzar una nueva venta"
             >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">Nueva Venta</span>
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Nueva Venta</span>
             </button>
           )}
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* CUERPO PRINCIPAL: SPLIT SCREEN EN COMPUTADORA (60% CATÁLOGO / 40% TICKET) */}
+      {/* PASO 1: DATOS DEL CLIENTE / RECEPTOR (HORIZONTAL Y AMPLIO)                */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-
-        {/* LADO IZQUIERDO: BUSCADOR DE INVENTARIO Y CATÁLOGO TÁCTIL (60%) */}
-        <div className="lg:col-span-7 space-y-4">
-          
-          {/* Tarjeta del Buscador Central */}
-          <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
-            
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Search className="w-4 h-4 text-red-600" />
-                <span>Buscador de Repuestos en Tiempo Real</span>
+      <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+        
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center font-mono font-black text-xs">
+              1
+            </span>
+            <h2 className="text-sm font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Datos del Cliente / Receptor
+            </h2>
+            {clienteEncontrado && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                Cliente Registrado
               </span>
+            )}
+          </div>
 
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={setConsumidorFinal}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/20 transition-colors cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <span>Contado / Consumidor Final</span>
+            </button>
+
+            {(cliente.documento || cliente.nombre) && (
+              <button
+                type="button"
+                onClick={limpiarDatosCliente}
+                className="text-xs font-mono font-bold text-slate-400 hover:text-red-500 cursor-pointer px-2 py-1"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Formulario en fila horizontal amplia (3 columnas en PC) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          
+          {/* Cédula / RIF */}
+          <div ref={cedulaContainerRef} className="md:col-span-4 relative">
+            <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1.5">
+              Cédula / RIF *
+            </label>
+            <div className="flex gap-1.5">
+              <div className="flex bg-slate-100 dark:bg-[#06080F] rounded-xl p-0.5 border border-slate-300 dark:border-white/10 shrink-0">
+                {['V', 'J', 'E', 'G'].map((tipo) => {
+                  const activo = (cliente.documento || '').startsWith(`${tipo}-`);
+                  return (
+                    <button
+                      key={tipo}
+                      type="button"
+                      onClick={() => seleccionarPrefijo(tipo)}
+                      className={`px-2 py-1 rounded-lg text-xs font-mono font-black cursor-pointer transition-colors ${
+                        activo ? 'bg-red-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {tipo}
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                type="text"
+                value={cliente.documento || ''}
+                onChange={(e) => handleDocumentoChange(e.target.value)}
+                onFocus={() => {
+                  if (sugerenciasCedula.length > 0) setMostrarSugerenciasCedula(true);
+                }}
+                placeholder="26.946.393"
+                className="w-full h-10 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-red-600 transition-colors"
+              />
+            </div>
+
+            {/* Desplegable a2 Cédula */}
+            {mostrarSugerenciasCedula && sugerenciasCedula.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/20 rounded-2xl shadow-2xl p-1.5 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
+                <div className="px-2.5 py-1 text-[9px] font-mono font-bold text-slate-400 uppercase">
+                  Clientes encontrados (Tipo a2)
+                </div>
+                {sugerenciasCedula.map((c, i) => (
+                  <div
+                    key={c.id || i}
+                    onMouseDown={() => seleccionarCliente(c)}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-xl cursor-pointer flex items-center justify-between text-xs transition-colors"
+                  >
+                    <div>
+                      <span className="font-mono font-bold text-red-600 mr-2">{c.cedula_rif}</span>
+                      <span className="font-bold text-slate-800 dark:text-white">{c.nombre}</span>
+                    </div>
+                    <span className="text-[10px] font-mono bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded text-slate-500">
+                      Seleccionar
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Nombre o Razón Social */}
+          <div ref={nombreContainerRef} className="md:col-span-5 relative">
+            <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1.5">
+              Nombre o Razón Social *
+            </label>
+            <input
+              type="text"
+              value={cliente.nombre || ''}
+              onChange={(e) => {
+                setCliente(prev => ({ ...prev, nombre: e.target.value }));
+                if (clienteEncontrado && clienteEncontrado.nombre !== e.target.value) setClienteEncontrado(null);
+              }}
+              onFocus={() => {
+                if (sugerenciasNombre.length > 0) setMostrarSugerenciasNombre(true);
+              }}
+              placeholder="Ej. Taller Los Andes C.A. o Juan Pérez"
+              className="w-full h-10 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-red-600 transition-colors"
+            />
+
+            {/* Desplegable a2 Nombre */}
+            {mostrarSugerenciasNombre && sugerenciasNombre.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/20 rounded-2xl shadow-2xl p-1.5 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
+                <div className="px-2.5 py-1 text-[9px] font-mono font-bold text-slate-400 uppercase">
+                  Clientes encontrados por nombre
+                </div>
+                {sugerenciasNombre.map((c, i) => (
+                  <div
+                    key={c.id || i}
+                    onMouseDown={() => seleccionarCliente(c)}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-xl cursor-pointer flex items-center justify-between text-xs transition-colors"
+                  >
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-white">{c.nombre}</p>
+                      <p className="text-[10px] font-mono text-red-600">{c.cedula_rif}</p>
+                    </div>
+                    <span className="text-[10px] font-mono bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded text-slate-500">
+                      Cargar
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Teléfono de Contacto */}
+          <div className="md:col-span-3">
+            <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1.5">
+              Teléfono de Contacto
+            </label>
+            <div className="relative">
+              <input
+                type="tel"
+                value={cliente.telefono || ''}
+                onChange={(e) => handleTelefonoChange(e.target.value)}
+                placeholder="0414-1234567"
+                className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-red-600 transition-colors"
+              />
+              <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* PASO 2: RENGLONES DE LA FACTURA + BUSCADOR INTEGRADO                       */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+        
+        {/* Cabecera del Paso 2 */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center font-mono font-black text-xs">
+              2
+            </span>
+            <h2 className="text-sm font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Renglones de la Factura
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300">
+              {items.length} {items.length === 1 ? 'renglón' : 'renglones'} ({totalItemsEnCarrito} piezas)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={agregarItemManual}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-red-500" />
+              <span>+ Renglón Manual</span>
+            </button>
+
+            {items.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setItems([])}
+                className="text-xs font-mono font-bold text-rose-500 hover:text-rose-700 cursor-pointer px-2 py-1"
+              >
+                Vaciar Renglones
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Buscador Rápido de Repuestos Integrado */}
+        <div className="space-y-3">
+          <div className="relative">
+            <input
+              ref={inputBusquedaRef}
+              type="text"
+              value={busquedaTexto}
+              onChange={(e) => setBusquedaTexto(e.target.value)}
+              placeholder="Escribe código corto, número de parte, descripción o vehículo para agregar repuestos (ej: 05143, pastilla, corolla)..."
+              className="w-full h-12 pl-11 pr-28 bg-slate-50 dark:bg-[#06080F] border-2 border-slate-200 dark:border-white/10 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-red-600 transition-all shadow-inner"
+            />
+            <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
               {hayFiltrosActivos && (
                 <button
                   type="button"
@@ -681,29 +940,17 @@ export default function POSWorkspace({
                     setFiltroMarca('');
                     setFiltroVehiculo('');
                   }}
-                  className="text-[10px] font-mono font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg"
+                  title="Limpiar búsqueda"
                 >
-                  <X className="w-3 h-3" /> Limpiar filtros
+                  <X className="w-4 h-4" />
                 </button>
               )}
-            </div>
-
-            {/* Input de Búsqueda Grande */}
-            <div className="relative">
-              <input
-                ref={inputBusquedaRef}
-                type="text"
-                value={busquedaTexto}
-                onChange={(e) => setBusquedaTexto(e.target.value)}
-                placeholder="Escribe código corto, OEM, repuesto, marca o vehículo (ej: corolla, 05143)..."
-                className="w-full h-11 pl-11 pr-24 bg-slate-50 dark:bg-[#06080F] border-2 border-slate-200 dark:border-white/10 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-red-600 transition-all shadow-inner"
-              />
-              <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
 
               <button
                 type="button"
                 onClick={() => setMostrarFiltrosAvanzados(!mostrarFiltrosAvanzados)}
-                className={`absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                   mostrarFiltrosAvanzados || filtroLinea || filtroMarca || filtroVehiculo
                     ? 'bg-red-600 text-white shadow-xs'
                     : 'bg-slate-200/80 hover:bg-slate-300 dark:bg-white/10 text-slate-700 dark:text-slate-300'
@@ -713,585 +960,502 @@ export default function POSWorkspace({
                 <span className="hidden sm:inline">Filtros</span>
               </button>
             </div>
-
-            {/* Desglose de Filtros en Cascada */}
-            {mostrarFiltrosAvanzados && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-white/[0.06] animate-in fade-in">
-                {/* 1. Línea */}
-                <div>
-                  <label className="text-[9px] font-mono font-bold text-slate-400 uppercase block mb-1">
-                    Línea
-                  </label>
-                  <select
-                    value={filtroLinea}
-                    onChange={(e) => {
-                      setFiltroLinea(e.target.value);
-                      setFiltroSublinea('');
-                      setFiltroMarca('');
-                      setFiltroVehiculo('');
-                    }}
-                    className="w-full h-8 px-2 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-red-600"
-                  >
-                    <option value="">Todas las Líneas</option>
-                    {listaLineas.map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                </div>
-
-                {/* 2. Sublínea */}
-                <div>
-                  <label className="text-[9px] font-mono font-bold text-slate-400 uppercase block mb-1">
-                    Sublínea
-                  </label>
-                  <select
-                    value={filtroSublinea}
-                    onChange={(e) => {
-                      setFiltroSublinea(e.target.value);
-                      setFiltroMarca('');
-                      setFiltroVehiculo('');
-                    }}
-                    className="w-full h-8 px-2 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-red-600"
-                  >
-                    <option value="">Todas las Sublíneas</option>
-                    {sublineasDisponibles.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-
-                {/* 3. Marca */}
-                <div>
-                  <label className="text-[9px] font-mono font-bold text-slate-400 uppercase block mb-1">
-                    Marca
-                  </label>
-                  <select
-                    value={filtroMarca}
-                    onChange={(e) => {
-                      setFiltroMarca(e.target.value);
-                      setFiltroVehiculo('');
-                    }}
-                    className="w-full h-8 px-2 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-red-600"
-                  >
-                    <option value="">Todas las Marcas</option>
-                    {marcasDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-
-                {/* 4. Vehículo */}
-                <div>
-                  <label className="text-[9px] font-mono font-bold text-slate-400 uppercase block mb-1">
-                    Vehículo
-                  </label>
-                  <select
-                    value={filtroVehiculo}
-                    onChange={(e) => setFiltroVehiculo(e.target.value)}
-                    className="w-full h-8 px-2 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-red-600"
-                  >
-                    <option value="">Todos los Modelos</option>
-                    {vehiculosDisponibles.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Resultados de Productos */}
-          <div className="space-y-2.5">
-            {cargandoProductos ? (
-              <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-8 text-center text-slate-400 text-xs font-mono">
-                <span className="w-2 h-2 rounded-full bg-red-600 animate-ping inline-block mr-2" />
-                Buscando en catálogo de repuestos...
+          {/* Filtros en Cascada (Colapsables) */}
+          {mostrarFiltrosAvanzados && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 p-3.5 bg-slate-50 dark:bg-[#06080F] border border-slate-200 dark:border-white/10 rounded-2xl animate-in fade-in">
+              <div>
+                <label className="text-[9px] font-mono font-bold text-slate-400 uppercase block mb-1">
+                  1. Línea
+                </label>
+                <select
+                  value={filtroLinea}
+                  onChange={(e) => {
+                    setFiltroLinea(e.target.value);
+                    setFiltroSublinea('');
+                    setFiltroMarca('');
+                    setFiltroVehiculo('');
+                  }}
+                  className="w-full h-8 px-2 bg-white dark:bg-[#0B0F19] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-red-600"
+                >
+                  <option value="">Todas las Líneas</option>
+                  {listaLineas.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
               </div>
-            ) : hayFiltrosActivos && productosEncontrados.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {productosEncontrados.map((prod) => {
-                  const precios = calcularPrecios(prod);
-                  const agregadoReciente = ultimoAgregadoId === prod.id;
-                  const enStock = (prod.stock ?? 0) > 0;
 
-                  return (
-                    <div
-                      key={prod.id}
-                      onClick={() => agregarAlCarrito(prod)}
-                      className={`bg-white dark:bg-[#0B0F19]/90 border rounded-2xl p-3.5 transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 group relative overflow-hidden ${
-                        agregadoReciente
-                          ? 'border-emerald-500 ring-2 ring-emerald-500/30 scale-[1.01]'
-                          : 'border-slate-200/90 dark:border-white/[0.08] hover:border-red-500/60 hover:shadow-md'
-                      }`}
-                    >
-                      {/* Cabecera del producto */}
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="text-xs font-mono font-black text-red-600 dark:text-red-400">
-                            {prod.codigo_corto}
-                          </span>
-                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                            enStock 
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60' 
-                              : 'bg-rose-50 text-rose-600 border border-rose-200/60'
-                          }`}>
-                            {enStock ? `${prod.stock} disp.` : 'Agotado'}
-                          </span>
-                        </div>
+              <div>
+                <label className="text-[9px] font-mono font-bold text-slate-400 uppercase block mb-1">
+                  2. Sublínea
+                </label>
+                <select
+                  value={filtroSublinea}
+                  onChange={(e) => {
+                    setFiltroSublinea(e.target.value);
+                    setFiltroMarca('');
+                    setFiltroVehiculo('');
+                  }}
+                  className="w-full h-8 px-2 bg-white dark:bg-[#0B0F19] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-red-600"
+                >
+                  <option value="">Todas las Sublíneas</option>
+                  {sublineasDisponibles.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
 
-                        <p className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug group-hover:text-red-600 transition-colors">
-                          {prod.descripcion}
-                        </p>
+              <div>
+                <label className="text-[9px] font-mono font-bold text-slate-400 uppercase block mb-1">
+                  3. Marca del Repuesto
+                </label>
+                <select
+                  value={filtroMarca}
+                  onChange={(e) => {
+                    setFiltroMarca(e.target.value);
+                    setFiltroVehiculo('');
+                  }}
+                  className="w-full h-8 px-2 bg-white dark:bg-[#0B0F19] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-red-600"
+                >
+                  <option value="">Todas las Marcas</option>
+                  {marcasDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
 
-                        <div className="flex items-center gap-2 mt-2 text-[10px] font-mono text-slate-400">
-                          <span className="font-bold text-slate-600 dark:text-slate-300">
-                            {prod.marca_producto || prod.marca || 'GENÉRICO'}
-                          </span>
-                          {prod.referencia && (
-                            <>
-                              <span>•</span>
-                              <span>OEM: {prod.referencia}</span>
-                            </>
+              <div>
+                <label className="text-[9px] font-mono font-bold text-slate-400 uppercase block mb-1">
+                  4. Modelo del Vehículo
+                </label>
+                <select
+                  value={filtroVehiculo}
+                  onChange={(e) => setFiltroVehiculo(e.target.value)}
+                  className="w-full h-8 px-2 bg-white dark:bg-[#0B0F19] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-red-600"
+                >
+                  <option value="">Todos los Modelos</option>
+                  {vehiculosDisponibles.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* BANDEJA DE RESULTADOS DE BÚSQUEDA RÁPIDA (SI EL USUARIO ESCRIBIÓ O FILTRÓ) */}
+          {hayFiltrosActivos && (
+            <div className="bg-slate-50 dark:bg-[#06080F] border-2 border-red-200 dark:border-red-900/40 rounded-2xl p-3 sm:p-4 shadow-lg space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/10">
+                <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Package className="w-4 h-4 text-red-600" />
+                  <span>Repuestos encontrados ({productosEncontrados.length})</span>
+                </span>
+                <span className="text-[11px] text-slate-500 font-mono">
+                  Haz clic en "+ Agregar" para añadir a la factura
+                </span>
+              </div>
+
+              {cargandoProductos ? (
+                <div className="py-6 text-center text-xs font-mono text-slate-400 animate-pulse">
+                  Buscando repuestos en el inventario...
+                </div>
+              ) : productosEncontrados.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto pr-1">
+                  {productosEncontrados.map((prod) => {
+                    const precios = calcularPrecios(prod);
+                    const sinStock = (prod.stock ?? 0) <= 0;
+                    const agregadoReciente = ultimoAgregadoId === prod.id;
+                    const fotoUrl = obtenerFotoRepuesto(prod);
+
+                    return (
+                      <div
+                        key={prod.id}
+                        className={`p-3 rounded-xl border transition-all flex flex-col justify-between gap-2 ${
+                          agregadoReciente
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500 scale-[1.02]'
+                            : 'bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/10 hover:border-red-400'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-start justify-between gap-1.5">
+                            <span className="font-mono font-black text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded">
+                              {prod.codigo_corto || 'S/C'}
+                            </span>
+                            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                              sinStock
+                                ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'
+                                : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                            }`}>
+                              Stock: {prod.stock ?? 0}
+                            </span>
+                          </div>
+
+                          <h3 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-2 leading-snug">
+                            {prod.descripcion}
+                          </h3>
+
+                          {(prod.marca_producto || prod.marca) && (
+                            <p className="text-[10px] font-mono text-slate-500 uppercase">
+                              Marca: {prod.marca_producto || prod.marca}
+                            </p>
+                          )}
+                          {prod.modelo_vehiculo && (
+                            <p className="text-[10px] text-slate-400 truncate">
+                              🚗 {prod.modelo_vehiculo}
+                            </p>
                           )}
                         </div>
-                      </div>
 
-                      {/* Pie con Precios y Botón */}
-                      <div className="pt-2 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
-                        <div>
-                          <div className="text-sm font-mono font-black text-slate-900 dark:text-white">
-                            ${formatUSD(precios.pDivisa)}
+                        {/* Precios y Botón Agregar */}
+                        <div className="pt-2 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-mono font-black text-slate-900 dark:text-white">
+                              ${formatUSD(precios.pDivisa)}
+                            </div>
+                            <div className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              Bs. {formatVES(precios.pBs)}
+                            </div>
                           </div>
-                          <div className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                            Bs. {formatVES(precios.pBs)}
-                          </div>
-                        </div>
 
-                        <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/[0.06] group-hover:bg-red-600 group-hover:text-white flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors shadow-xs">
-                          <Plus className="w-4 h-4" />
+                          <button
+                            type="button"
+                            onClick={() => agregarAlCarrito(prod)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition-transform active:scale-95 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Agregar</span>
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : hayFiltrosActivos ? (
-              <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-8 text-center text-slate-400 text-xs font-mono">
-                No se encontraron repuestos con los términos o filtros seleccionados.
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-8 text-center text-slate-400 text-xs font-mono space-y-1">
-                <Search className="w-6 h-6 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                <p className="font-bold text-slate-700 dark:text-slate-300">Comienza escribiendo en el buscador superior</p>
-                <p className="text-[11px]">Busca repuestos por código corto, descripción, OEM o marca para agregar al ticket.</p>
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-6 text-center text-xs font-mono text-slate-400">
+                  No se encontraron repuestos con los términos de búsqueda.
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* LADO DERECHO: TICKET DE VENTA, CLIENTE Y COBRO (40% EN PC / DRAWER EN MÓVIL) */}
-        <div className={`lg:col-span-5 space-y-4 ${drawerCarritoAbierto ? 'block' : 'hidden lg:block'}`}>
-          
-          {/* ========================================================================= */}
-          {/* 1. SECCIÓN DE CLIENTE TIPO a2 SOFTWAY                                    */}
-          {/* ========================================================================= */}
-          <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
-            
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-red-600" />
-                <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  Cliente / Receptor
-                </span>
-                {clienteEncontrado && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    Registrado
-                  </span>
-                )}
-              </div>
-
-              {(cliente.documento || cliente.nombre) && (
-                <button
-                  type="button"
-                  onClick={limpiarDatosCliente}
-                  className="text-[10px] font-mono font-bold text-slate-400 hover:text-red-500 cursor-pointer"
-                >
-                  Limpiar
-                </button>
-              )}
-            </div>
-
-            {/* Inputs de Cédula y Nombre Tipo a2 */}
-            <div className="space-y-2.5 text-xs">
-              
-              {/* Cédula / RIF con Autocompletado */}
-              <div ref={cedulaContainerRef} className="relative">
-                <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">
-                  Cédula / RIF *
-                </label>
-                <div className="flex gap-1">
-                  <div className="flex bg-slate-100 dark:bg-[#06080F] rounded-xl p-0.5 border border-slate-300 dark:border-white/10 shrink-0">
-                    {['V', 'J', 'E', 'G'].map((tipo) => {
-                      const activo = (cliente.documento || '').startsWith(`${tipo}-`);
-                      return (
-                        <button
-                          key={tipo}
-                          type="button"
-                          onClick={() => seleccionarPrefijo(tipo)}
-                          className={`px-1.5 py-0.5 rounded-lg text-[10px] font-mono font-black cursor-pointer transition-colors ${
-                            activo ? 'bg-red-600 text-white' : 'text-slate-500 hover:text-slate-900'
-                          }`}
-                        >
-                          {tipo}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <input
-                    type="text"
-                    value={cliente.documento || ''}
-                    onChange={(e) => handleDocumentoChange(e.target.value)}
-                    onFocus={() => {
-                      if (sugerenciasCedula.length > 0) setMostrarSugerenciasCedula(true);
-                    }}
-                    placeholder="26.946.393"
-                    className="w-full h-9 px-2.5 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
-                  />
-                </div>
-
-                {/* Desplegable a2 Cédula */}
-                {mostrarSugerenciasCedula && sugerenciasCedula.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/20 rounded-xl shadow-2xl p-1 max-h-52 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
-                    <div className="px-2 py-1 text-[9px] font-mono font-bold text-slate-400 uppercase">
-                      Clientes coincidentes (Tipo a2)
-                    </div>
-                    {sugerenciasCedula.map((c, i) => (
-                      <div
-                        key={c.id || i}
-                        onMouseDown={() => seleccionarCliente(c)}
-                        className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-lg cursor-pointer flex items-center justify-between text-xs"
-                      >
-                        <div>
-                          <span className="font-mono font-bold text-red-600 mr-2">{c.cedula_rif}</span>
-                          <span className="font-bold text-slate-800 dark:text-white">{c.nombre}</span>
-                        </div>
-                        <span className="text-[9px] font-mono bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded">Enter</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Nombre o Razón Social */}
-              <div ref={nombreContainerRef} className="relative">
-                <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">
-                  Nombre o Razón Social *
-                </label>
-                <input
-                  type="text"
-                  value={cliente.nombre || ''}
-                  onChange={(e) => {
-                    setCliente(prev => ({ ...prev, nombre: e.target.value }));
-                    if (clienteEncontrado && clienteEncontrado.nombre !== e.target.value) setClienteEncontrado(null);
-                  }}
-                  onFocus={() => {
-                    if (sugerenciasNombre.length > 0) setMostrarSugerenciasNombre(true);
-                  }}
-                  placeholder="Ej. Taller Los Andes C.A. o Juan Pérez"
-                  className="w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
-                />
-
-                {/* Desplegable a2 Nombre */}
-                {mostrarSugerenciasNombre && sugerenciasNombre.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/20 rounded-xl shadow-2xl p-1 max-h-52 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
-                    <div className="px-2 py-1 text-[9px] font-mono font-bold text-slate-400 uppercase">
-                      Clientes encontrados por nombre
-                    </div>
-                    {sugerenciasNombre.map((c, i) => (
-                      <div
-                        key={c.id || i}
-                        onMouseDown={() => seleccionarCliente(c)}
-                        className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-lg cursor-pointer flex items-center justify-between text-xs"
-                      >
-                        <div>
-                          <p className="font-bold text-slate-800 dark:text-white">{c.nombre}</p>
-                          <p className="text-[10px] font-mono text-red-600">{c.cedula_rif}</p>
-                        </div>
-                        <span className="text-[9px] font-mono bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded">Cargar</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Teléfono de Contacto */}
-              <div>
-                <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">
-                  Teléfono de Contacto (Opcional)
-                </label>
-                <input
-                  type="tel"
-                  value={cliente.telefono || ''}
-                  onChange={(e) => handleTelefonoChange(e.target.value)}
-                  placeholder="0414-1234567"
-                  className="w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ========================================================================= */}
-          {/* 2. LISTA DE RENGLONES EN EL TICKET                                        */}
-          {/* ========================================================================= */}
-          <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
-            
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
-              <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Receipt className="w-4 h-4 text-red-600" />
-                <span>Renglones ({totalItemsEnCarrito})</span>
-              </span>
-
-              {items.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setItems([])}
-                  className="text-[10px] font-mono font-bold text-rose-500 hover:underline cursor-pointer"
-                >
-                  Vaciar
-                </button>
-              )}
-            </div>
-
-            {items.length > 0 ? (
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+        {/* ========================================================================= */}
+        {/* TABLA PRINCIPAL DE RENGLONES EN LA FACTURA                                */}
+        {/* ========================================================================= */}
+        {items.length > 0 ? (
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 font-mono text-[10px] uppercase border-b border-slate-200 dark:border-white/10">
+                <tr>
+                  <th className="py-3 px-3 text-center w-10">#</th>
+                  <th className="py-3 px-3 w-28">Código</th>
+                  <th className="py-3 px-3">Descripción del Repuesto</th>
+                  <th className="py-3 px-3 text-center w-32">Cantidad</th>
+                  <th className="py-3 px-3 text-right w-36">Precio Unitario</th>
+                  <th className="py-3 px-3 text-right w-36">Subtotal</th>
+                  <th className="py-3 px-3 text-center w-12"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
                 {items.map((it, idx) => (
-                  <div
+                  <tr
                     key={it.id || idx}
-                    className="p-2.5 rounded-2xl bg-slate-50 dark:bg-[#06080F] border border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-2 text-xs"
+                    className="hover:bg-slate-50/70 dark:hover:bg-white/[0.02] transition-colors"
                   >
-                    <div className="min-w-0 flex-1">
+                    {/* Número de Renglón */}
+                    <td className="py-3 px-3 text-center font-mono text-slate-400 font-bold">
+                      {idx + 1}
+                    </td>
+
+                    {/* Código Corto */}
+                    <td className="py-3 px-3 font-mono font-bold">
+                      <span className="px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs">
+                        {it.codigo_corto}
+                      </span>
+                    </td>
+
+                    {/* Descripción */}
+                    <td className="py-3 px-3">
                       {it.codigo_corto === 'MANUAL' ? (
                         <input
                           type="text"
                           value={it.descripcion}
                           onChange={(e) => handleItemManualChange(idx, 'descripcion', e.target.value)}
-                          placeholder="Descripción del renglón manual..."
-                          className="w-full bg-white dark:bg-black/30 px-2 py-1 border border-slate-300 dark:border-white/10 rounded-lg text-xs font-bold"
+                          placeholder="Escribe la descripción del producto o servicio manual..."
+                          className="w-full bg-white dark:bg-[#06080F] px-2.5 py-1.5 border border-slate-300 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
                         />
                       ) : (
-                        <p className="font-bold text-slate-900 dark:text-white truncate">
-                          {it.descripcion}
-                        </p>
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white text-xs">
+                            {it.descripcion}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] font-mono text-slate-400">
+                            {it.marca && <span className="uppercase font-semibold">{it.marca}</span>}
+                            {it.referencia && <span>• Ref: {it.referencia}</span>}
+                          </div>
+                        </div>
                       )}
-                      
-                      <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-slate-400">
-                        <span className="font-bold text-red-600">{it.codigo_corto}</span>
-                        <span>•</span>
-                        <span>${formatUSD(it.precio_divisa || it.precio)} c/u</span>
-                      </div>
-                    </div>
+                    </td>
 
                     {/* Stepper de Cantidad */}
-                    <div className="flex items-center gap-1 bg-white dark:bg-white/[0.06] border border-slate-300 dark:border-white/10 rounded-xl p-0.5 shrink-0">
+                    <td className="py-3 px-3 text-center">
+                      <div className="inline-flex items-center bg-slate-100 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => modificarCantidad(idx, -1)}
+                          className="w-7 h-7 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-8 text-center font-mono font-bold text-xs text-slate-900 dark:text-white">
+                          {it.cantidad}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => modificarCantidad(idx, 1)}
+                          className="w-7 h-7 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* Precio Unitario */}
+                    <td className="py-3 px-3 text-right font-mono">
+                      {it.codigo_corto === 'MANUAL' ? (
+                        <div className="inline-flex items-center gap-1 justify-end">
+                          <span className="text-slate-400">$</span>
+                          <input
+                            type="text"
+                            value={it.precio_divisa || ''}
+                            onChange={(e) => handleItemManualChange(idx, 'precio_divisa', e.target.value)}
+                            placeholder="0.00"
+                            className="w-20 bg-white dark:bg-[#06080F] px-2 py-1 border border-slate-300 dark:border-white/10 rounded-lg text-xs font-mono font-bold text-right text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">
+                            ${formatUSD(it.precio_divisa || it.precio)}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            Bs. {formatVES(it.precio_bs)}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Subtotal */}
+                    <td className="py-3 px-3 text-right font-mono">
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">
+                        ${formatUSD(it.subtotal_usd || 0)}
+                      </div>
+                      <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        Bs. {formatVES(it.subtotal_bs || 0)}
+                      </div>
+                    </td>
+
+                    {/* Botón Eliminar */}
+                    <td className="py-3 px-3 text-center">
                       <button
                         type="button"
-                        onClick={() => modificarCantidad(idx, -1)}
-                        className="w-6 h-6 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 rounded-lg"
+                        onClick={() => eliminarItem(idx)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
+                        title="Eliminar renglón"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
-                      <span className="w-5 text-center font-mono font-bold text-xs">
-                        {it.cantidad}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => modificarCantidad(idx, 1)}
-                        className="w-6 h-6 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 rounded-lg"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    {/* Subtotal del item */}
-                    <div className="text-right font-mono font-bold text-xs shrink-0 w-16">
-                      ${formatUSD(it.subtotal_usd || 0)}
-                    </div>
-
-                    {/* Eliminar */}
-                    <button
-                      type="button"
-                      onClick={() => eliminarItem(idx)}
-                      className="p-1 text-slate-400 hover:text-rose-500 rounded-lg"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            ) : (
-              <div className="py-6 text-center text-slate-400 text-xs font-mono">
-                El carrito está vacío. Agrega repuestos desde el catálogo.
-              </div>
-            )}
+              </tbody>
+            </table>
           </div>
+        ) : (
+          <div className="py-12 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 text-center space-y-2">
+            <ShoppingBag className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
+            <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+              La factura no tiene renglones todavía
+            </p>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Escribe en el buscador superior para agregar repuestos del inventario o presiona "+ Renglón Manual" para servicios o productos sin código.
+            </p>
+          </div>
+        )}
+      </div>
 
-          {/* ========================================================================= */}
-          {/* 3. MODALIDADES DE PAGO Y CIERRE FISCAL                                    */}
-          {/* ========================================================================= */}
-          <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-4 sm:p-5 shadow-sm space-y-3.5">
-            
-            <div className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-              Modalidad de Cobro
-            </div>
+      {/* ========================================================================= */}
+      {/* PASO 3: FORMA DE PAGO, TOTALES Y CIERRE DE VENTA                           */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-sm space-y-5">
+        
+        <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+          <span className="w-6 h-6 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center font-mono font-black text-xs">
+            3
+          </span>
+          <h2 className="text-sm font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            Forma de Pago y Total a Cobrar
+          </h2>
+        </div>
 
-            {/* Selector de 4 botones */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Modalidades de Pago (4 Botones Táctiles) */}
+          <div className="lg:col-span-7 space-y-2.5">
+            <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">
+              Selecciona la Modalidad de Cobro:
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
               <button
                 type="button"
                 onClick={() => seleccionarModalidadCierre('EFECTIVO')}
-                className={`p-2.5 rounded-xl border text-left transition-all font-bold ${
+                className={`p-3 rounded-2xl border text-left transition-all font-bold cursor-pointer ${
                   formaPago === 'EFECTIVO'
-                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-200'
+                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-2 ring-emerald-500/20'
+                    : 'bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <Banknote className="w-3.5 h-3.5" />
-                  <span>Efectivo ($)</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <Banknote className="w-4 h-4" />
+                  <span className="text-sm">Efectivo ($)</span>
                 </div>
-                <div className="text-[10px] font-normal opacity-80">Nota de Entrega</div>
+                <div className="text-[11px] font-normal opacity-85">
+                  Nota de Entrega • Divisas en Efectivo
+                </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => seleccionarModalidadCierre('PAGO_MOVIL')}
-                className={`p-2.5 rounded-xl border text-left transition-all font-bold ${
+                className={`p-3 rounded-2xl border text-left transition-all font-bold cursor-pointer ${
                   formaPago === 'PAGO_MOVIL'
-                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-200'
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-md ring-2 ring-blue-500/20'
+                    : 'bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span>Pago Móvil / Punto</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <Smartphone className="w-4 h-4" />
+                  <span className="text-sm">Pago Móvil / Punto</span>
                 </div>
-                <div className="text-[10px] font-normal opacity-80">Factura Fiscal</div>
+                <div className="text-[11px] font-normal opacity-85">
+                  Factura Fiscal • Bolívares Tasa BCV
+                </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => seleccionarModalidadCierre('CASHEA')}
-                className={`p-2.5 rounded-xl border text-left transition-all font-bold ${
+                className={`p-3 rounded-2xl border text-left transition-all font-bold cursor-pointer ${
                   formaPago === 'CASHEA'
-                    ? 'bg-purple-600 text-white border-purple-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-200'
+                    ? 'bg-purple-600 text-white border-purple-500 shadow-md ring-2 ring-purple-500/20'
+                    : 'bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <CreditCard className="w-3.5 h-3.5" />
-                  <span>Cashea (12%)</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <CreditCard className="w-4 h-4" />
+                  <span className="text-sm">Cashea (12%)</span>
                 </div>
-                <div className="text-[10px] font-normal opacity-80">Recargo Integrado</div>
+                <div className="text-[11px] font-normal opacity-85">
+                  Factura Fiscal • Recargo Cashea Integrado
+                </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => seleccionarModalidadCierre('CREDITO_TIENDA')}
-                className={`p-2.5 rounded-xl border text-left transition-all font-bold ${
+                className={`p-3 rounded-2xl border text-left transition-all font-bold cursor-pointer ${
                   formaPago === 'CREDITO_TIENDA'
-                    ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-200'
+                    ? 'bg-amber-600 text-white border-amber-500 shadow-md ring-2 ring-amber-500/20'
+                    : 'bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <Tag className="w-3.5 h-3.5" />
-                  <span>Crédito Tienda</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <Tag className="w-4 h-4" />
+                  <span className="text-sm">Crédito Tienda</span>
                 </div>
-                <div className="text-[10px] font-normal opacity-80">Cuentas por Cobrar</div>
+                <div className="text-[11px] font-normal opacity-85">
+                  Nota de Entrega • Cuentas por Cobrar
+                </div>
               </button>
             </div>
+          </div>
 
-            {/* Liquidación Fiscal */}
-            <div className="pt-2 border-t border-slate-100 dark:border-white/[0.06] space-y-1.5 text-xs font-mono">
-              <div className="flex justify-between text-slate-500">
+          {/* Desglose Fiscal y Totales Grandes */}
+          <div className="lg:col-span-5 bg-slate-50 dark:bg-[#06080F] border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 space-y-3 font-mono text-xs">
+            
+            <div className="space-y-1.5 pb-3 border-b border-slate-200 dark:border-white/10">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Subtotal Neto:</span>
-                <span>${formatUSD(totals.baseImponible)} / Bs. {formatVES(totals.baseImponibleBs)}</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  ${formatUSD(totals.baseImponible)} / Bs. {formatVES(totals.baseImponibleBs)}
+                </span>
               </div>
+
               {formaPago === 'CASHEA' && (
                 <div className="flex justify-between text-purple-600 font-bold">
                   <span>Recargo Cashea (12%):</span>
                   <span>+${formatUSD((totals.totalUSD || 0) - (totals.baseImponible || 0))}</span>
                 </div>
               )}
+
               {formaPago !== 'EFECTIVO' && (
-                <div className="flex justify-between text-slate-500">
+                <div className="flex justify-between text-slate-500 dark:text-slate-400">
                   <span>IVA (16%):</span>
-                  <span>+${formatUSD(totals.iva)} / Bs. {formatVES(totals.ivaBs)}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    +${formatUSD(totals.iva)} / Bs. {formatVES(totals.ivaBs)}
+                  </span>
                 </div>
               )}
-              <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex justify-between items-baseline font-bold text-base text-slate-900 dark:text-white">
-                <span className="font-heading">TOTAL A COBRAR:</span>
-                <div className="text-right">
-                  <div className="text-lg font-black text-red-600 dark:text-red-400">
-                    ${formatUSD(totals.totalUSD)}
-                  </div>
-                  <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-                    Bs. {formatVES(totals.totalBs)}
-                  </div>
+            </div>
+
+            {/* Total Grande Destacado */}
+            <div className="flex items-end justify-between pt-1">
+              <div>
+                <span className="text-[11px] font-heading font-black text-slate-400 uppercase tracking-wider block">
+                  Total a Cobrar
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Tasa: {formatVES(tasaActivaNum)} Bs/$
+                </span>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl sm:text-3xl font-heading font-black text-red-600 dark:text-red-400 leading-tight">
+                  ${formatUSD(totals.totalUSD)}
+                </div>
+                <div className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                  Bs. {formatVES(totals.totalBs)}
                 </div>
               </div>
             </div>
-
-            {/* Botón Principal de Emisión */}
-            <div className="pt-2 space-y-2">
-              <button
-                type="button"
-                onClick={onGuardar}
-                disabled={loading || !formularioValido}
-                className={`w-full py-3.5 rounded-2xl font-heading font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  formularioValido
-                    ? 'btn-gradient-red shadow-lg active:scale-98'
-                    : 'bg-slate-200 dark:bg-white/10 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                {loading ? (
-                  <span>Guardando Comprobante...</span>
-                ) : (
-                  <>
-                    <span>Emitir {tipoDocumento === 'factura_fiscal' ? 'Factura Fiscal' : 'Nota de Entrega'}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={onImprimir}
-                disabled={loading || !formularioValido}
-                className="w-full py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-              >
-                Emitir e Imprimir Directo
-              </button>
-            </div>
           </div>
         </div>
-      </div>
 
-      {/* ========================================================================= */}
-      {/* BARRA FLOTANTE EN TELÉFONO PARA COBRAR                                    */}
-      {/* ========================================================================= */}
-      <div className="lg:hidden fixed bottom-14 left-0 right-0 z-40 p-2.5">
-        <button
-          type="button"
-          onClick={() => setDrawerCarritoAbierto(!drawerCarritoAbierto)}
-          className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl p-3 shadow-2xl flex items-center justify-between font-bold text-xs"
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center text-xs font-mono font-black">
-              {totalItemsEnCarrito}
-            </span>
-            <span>{drawerCarritoAbierto ? 'Ocultar Ticket' : 'Ver Ticket / Cobrar'}</span>
-          </div>
+        {/* Botones de Emisión Final */}
+        <div className="pt-3 border-t border-slate-100 dark:border-white/[0.06] flex flex-col sm:flex-row items-center gap-3">
+          <button
+            type="button"
+            onClick={onGuardar}
+            disabled={loading || !formularioValido}
+            className={`flex-1 w-full py-4 rounded-2xl font-heading font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
+              formularioValido
+                ? 'btn-gradient-red text-white hover:brightness-110 active:scale-[0.99]'
+                : 'bg-slate-200 dark:bg-white/10 text-slate-400 cursor-not-allowed shadow-none'
+            }`}
+          >
+            {loading ? (
+              <span>Emitiendo Comprobante...</span>
+            ) : (
+              <>
+                <span>Emitir {tipoDocumento === 'factura_fiscal' ? 'Factura Fiscal' : 'Nota de Entrega'}</span>
+                <ArrowRight className="w-5 h-5" />
+              </>
+            )}
+          </button>
 
-          <div className="flex items-center gap-2 font-mono">
-            <span className="text-red-400 dark:text-red-600 font-extrabold">${formatUSD(totals.totalUSD)}</span>
-            <span className="text-[10px] text-emerald-400 dark:text-emerald-600">(Bs. {formatVES(totals.totalBs)})</span>
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </div>
-        </button>
+          <button
+            type="button"
+            onClick={onImprimir}
+            disabled={loading || !formularioValido}
+            className="w-full sm:w-auto px-6 py-4 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-2xl text-xs sm:text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Printer className="w-4 h-4 text-slate-500" />
+            <span>Emitir e Imprimir Directo</span>
+          </button>
+        </div>
       </div>
 
       {/* MODAL ZOOM DE FOTO SI SE REQUIERE */}
