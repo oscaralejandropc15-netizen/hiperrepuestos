@@ -254,6 +254,22 @@ export default function FacturadorForm({
 }) {
 
   // =========================================================================
+  // ESTADOS PARA CLIENTES TIPO a2 (BÚSQUEDA DIRECTA POR CÉDULA Y NOMBRE)
+  // =========================================================================
+  const [sugerenciasCedula, setSugerenciasCedula] = useState([]);
+  const [mostrarSugerenciasCedula, setMostrarSugerenciasCedula] = useState(false);
+  const [buscandoClienteCedula, setBuscandoClienteCedula] = useState(false);
+
+  const [sugerenciasNombre, setSugerenciasNombre] = useState([]);
+  const [mostrarSugerenciasNombre, setMostrarSugerenciasNombre] = useState(false);
+  const [buscandoClienteNombre, setBuscandoClienteNombre] = useState(false);
+
+  const [clienteEncontrado, setClienteEncontrado] = useState(null);
+
+  const cedulaContainerRef = useRef(null);
+  const nombreContainerRef = useRef(null);
+
+  // =========================================================================
   // ESTADOS DE LA BÚSQUEDA Y FILTROS DE INVENTARIO
   // =========================================================================
   const [busquedaTexto, setBusquedaTexto] = useState('');
@@ -339,30 +355,19 @@ export default function FacturadorForm({
     return parsed > 0 ? parsed : 1;
   }, [tasaBCV]);
 
-  // Cerrar selector de clientes al hacer click afuera
+  // Cerrar listas de sugerencias al hacer click afuera
   useEffect(() => {
     function handleClickOutside(event) {
-      if (clientSelectorRef.current && !clientSelectorRef.current.contains(event.target)) {
-        setMostrarListaClientes(false);
+      if (cedulaContainerRef.current && !cedulaContainerRef.current.contains(event.target)) {
+        setMostrarSugerenciasCedula(false);
+      }
+      if (nombreContainerRef.current && !nombreContainerRef.current.contains(event.target)) {
+        setMostrarSugerenciasNombre(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const cargarClientesRegistrados = async () => {
-    try {
-      const { data } = await supabase
-        .from('clientes')
-        .select('*')
-        .order('nombre', { ascending: true })
-        .limit(30);
-      setListaClientesRegistrados(data || []);
-      setMostrarListaClientes(true);
-    } catch (err) {
-      console.warn('Error consultando clientes registrados:', err);
-    }
-  };
 
   // Determinar si la búsqueda está activa
   const hayFiltrosActivos = Boolean(
@@ -609,115 +614,196 @@ export default function FacturadorForm({
       setTipoDocumento('nota_entrega');
       setCondicionPago('CRÉDITO');
       setMonedaIngreso('USD');
-      if (!cliente.id && !clienteEncontrado) {
-        cargarClientesRegistrados();
-      }
     }
   };
 
-  // Autocompletado inteligente de Cédula/RIF
+  // 1. Seleccionar cliente y cargar automáticamente sus datos (Tipo a2)
+  const seleccionarCliente = (c) => {
+    const docNormalizado = c.cedula_rif || c.cliente_documento || '';
+    setCliente({
+      id: c.id || null,
+      documento: docNormalizado,
+      nombre: c.nombre || c.cliente_nombre || '',
+      telefono: c.telefono || c.cliente_telefono || '',
+      direccion: c.direccion || c.cliente_direccion || ''
+    });
+    setClienteEncontrado(c);
+    setMostrarSugerenciasCedula(false);
+    setMostrarSugerenciasNombre(false);
+  };
+
+  // 2. Limpiar datos del cliente para ingresar uno nuevo
+  const limpiarDatosCliente = () => {
+    setCliente({
+      id: null,
+      documento: '',
+      nombre: '',
+      telefono: '',
+      direccion: ''
+    });
+    setClienteEncontrado(null);
+    setSugerenciasCedula([]);
+    setSugerenciasNombre([]);
+    setMostrarSugerenciasCedula(false);
+    setMostrarSugerenciasNombre(false);
+  };
+
+  // 3. Autocompletado y Búsqueda inteligente por Cédula/RIF (Tipo a2)
   useEffect(() => {
     const doc = (cliente.documento || '').trim();
     const soloDigitos = doc.replace(/\D/g, '');
-    if (soloDigitos.length < 5) {
-      setClienteEncontrado(null);
+
+    if (soloDigitos.length < 3) {
+      setSugerenciasCedula([]);
+      setMostrarSugerenciasCedula(false);
+      if (soloDigitos.length === 0) {
+        setClienteEncontrado(null);
+      }
       return;
     }
 
     const timer = setTimeout(async () => {
-      setBuscandoCliente(true);
+      setBuscandoClienteCedula(true);
       try {
         const variantes = generarVariantesCedula(doc);
-        const orClause = variantes.map(v => `cedula_rif.eq.${v}`).join(',');
+        const orVariantes = variantes.map(v => `cedula_rif.eq.${v}`).join(',');
 
-        // 1. Buscar en tabla clientes
-        const { data: clientData } = await supabase
+        // 3.1 Coincidencia exacta directa (Carga automática inmediata sin requerir click)
+        const { data: exacto } = await supabase
           .from('clientes')
           .select('*')
-          .or(orClause)
+          .or(orVariantes)
           .limit(1)
           .maybeSingle();
 
-        if (clientData && clientData.nombre) {
-          setClienteEncontrado(clientData);
+        if (exacto && exacto.nombre) {
+          setClienteEncontrado(exacto);
           setCliente(prev => ({
             ...prev,
-            id: clientData.id,
-            nombre: clientData.nombre,
-            telefono: clientData.telefono || prev.telefono || '',
-            direccion: clientData.direccion || prev.direccion || ''
+            id: exacto.id,
+            documento: exacto.cedula_rif || prev.documento,
+            nombre: exacto.nombre,
+            telefono: exacto.telefono || prev.telefono || '',
+            direccion: exacto.direccion || prev.direccion || ''
           }));
+          setSugerenciasCedula([]);
+          setMostrarSugerenciasCedula(false);
           return;
         }
 
-        // 2. Buscar en guias_despacho anteriores
-        const orGuias = variantes.map(v => `cliente_documento.eq.${v}`).join(',');
-        const { data: guiaData } = await supabase
-          .from('guias_despacho')
-          .select('cliente_nombre, cliente_telefono, cliente_direccion, cliente_documento')
-          .or(orGuias)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        // 3.2 Coincidencia parcial para sugerencias desplegables tipo a2
+        const { data: sugeridos } = await supabase
+          .from('clientes')
+          .select('*')
+          .ilike('cedula_rif', `%${soloDigitos}%`)
+          .limit(6);
 
-        if (guiaData && guiaData.cliente_nombre) {
-          const clienteRecuperado = {
-            id: null,
-            cedula_rif: guiaData.cliente_documento || doc,
-            nombre: guiaData.cliente_nombre,
-            telefono: guiaData.cliente_telefono || '',
-            direccion: guiaData.cliente_direccion || ''
-          };
-          setClienteEncontrado(clienteRecuperado);
-          setCliente(prev => ({
-            ...prev,
-            id: null,
-            nombre: guiaData.cliente_nombre,
-            telefono: guiaData.cliente_telefono || prev.telefono || '',
-            direccion: guiaData.cliente_direccion || prev.direccion || ''
-          }));
-          return;
+        let matches = sugeridos ? [...sugeridos] : [];
+
+        // Si hay pocos clientes registrados, consultar histórico de guías de despacho
+        if (matches.length < 3) {
+          const { data: guias } = await supabase
+            .from('guias_despacho')
+            .select('cliente_documento, cliente_nombre, cliente_telefono, cliente_direccion')
+            .ilike('cliente_documento', `%${soloDigitos}%`)
+            .order('created_at', { ascending: false })
+            .limit(6);
+
+          if (guias && guias.length > 0) {
+            const existentes = new Set(matches.map(m => (m.cedula_rif || '').replace(/\D/g, '')));
+            guias.forEach(g => {
+              const gDig = (g.cliente_documento || '').replace(/\D/g, '');
+              if (gDig && !existentes.has(gDig) && g.cliente_nombre) {
+                existentes.add(gDig);
+                matches.push({
+                  id: null,
+                  cedula_rif: g.cliente_documento,
+                  nombre: g.cliente_nombre,
+                  telefono: g.cliente_telefono || '',
+                  direccion: g.cliente_direccion || ''
+                });
+              }
+            });
+          }
         }
 
-        setClienteEncontrado(null);
-        setCliente(prev => ({ ...prev, id: null }));
+        setSugerenciasCedula(matches);
+        if (matches.length > 0) {
+          setMostrarSugerenciasCedula(true);
+        } else {
+          setMostrarSugerenciasCedula(false);
+        }
       } catch (err) {
-        console.warn('Error consultando cliente:', err);
+        console.warn('Error consultando cliente por cédula:', err);
       } finally {
-        setBuscandoCliente(false);
+        setBuscandoClienteCedula(false);
       }
-    }, 280);
+    }, 220);
 
     return () => clearTimeout(timer);
   }, [cliente.documento]);
 
-  const registrarClienteManual = async () => {
-    if (!cliente.documento?.trim() || !cliente.nombre?.trim()) return;
-    setGuardandoClienteManual(true);
-    try {
-      const { data } = await supabase
-        .from('clientes')
-        .upsert({
-          cedula_rif: cliente.documento.trim(),
-          nombre: cliente.nombre.trim(),
-          telefono: cliente.telefono?.trim() || null,
-          direccion: cliente.direccion?.trim() || null
-        }, { onConflict: 'cedula_rif' })
-        .select('*')
-        .maybeSingle();
-
-      if (data) {
-        setClienteEncontrado(data);
-        setCliente(prev => ({ ...prev, id: data.id }));
-        setClienteGuardadoExitoso(true);
-        setTimeout(() => setClienteGuardadoExitoso(false), 3500);
-      }
-    } catch (e) {
-      console.warn('Error al registrar cliente:', e);
-    } finally {
-      setGuardandoClienteManual(false);
+  // 4. Búsqueda inteligente por Nombre o Razón Social (Tipo a2)
+  useEffect(() => {
+    const nombreQuery = (cliente.nombre || '').trim();
+    if (nombreQuery.length < 2 || (clienteEncontrado && clienteEncontrado.nombre === nombreQuery)) {
+      setSugerenciasNombre([]);
+      setMostrarSugerenciasNombre(false);
+      return;
     }
-  };
+
+    const timer = setTimeout(async () => {
+      setBuscandoClienteNombre(true);
+      try {
+        const { data: sugeridos } = await supabase
+          .from('clientes')
+          .select('*')
+          .ilike('nombre', `%${nombreQuery}%`)
+          .limit(6);
+
+        let matches = sugeridos ? [...sugeridos] : [];
+
+        if (matches.length < 3) {
+          const { data: guias } = await supabase
+            .from('guias_despacho')
+            .select('cliente_documento, cliente_nombre, cliente_telefono, cliente_direccion')
+            .ilike('cliente_nombre', `%${nombreQuery}%`)
+            .order('created_at', { ascending: false })
+            .limit(6);
+
+          if (guias && guias.length > 0) {
+            const existentes = new Set(matches.map(m => (m.cedula_rif || '').replace(/\D/g, '')));
+            guias.forEach(g => {
+              const gDig = (g.cliente_documento || '').replace(/\D/g, '');
+              if (gDig && !existentes.has(gDig) && g.cliente_nombre) {
+                existentes.add(gDig);
+                matches.push({
+                  id: null,
+                  cedula_rif: g.cliente_documento,
+                  nombre: g.cliente_nombre,
+                  telefono: g.cliente_telefono || '',
+                  direccion: g.cliente_direccion || ''
+                });
+              }
+            });
+          }
+        }
+
+        setSugerenciasNombre(matches);
+        if (matches.length > 0) {
+          setMostrarSugerenciasNombre(true);
+        } else {
+          setMostrarSugerenciasNombre(false);
+        }
+      } catch (err) {
+        console.warn('Error consultando cliente por nombre:', err);
+      } finally {
+        setBuscandoClienteNombre(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [cliente.nombre]);
 
   const handleDocumentoChange = (raw) => {
     const prev = cliente.documento || '';
@@ -799,17 +885,7 @@ export default function FacturadorForm({
     setCliente(prev => ({ ...prev, telefono: formatted }));
   };
 
-  const seleccionarClienteRegistrado = (c) => {
-    setCliente({
-      id: c.id,
-      nombre: c.nombre,
-      documento: c.cedula_rif,
-      telefono: c.telefono || '',
-      direccion: c.direccion || ''
-    });
-    setClienteEncontrado(c);
-    setMostrarListaClientes(false);
-  };
+
 
   // Validación de formulario para habilitar emisión
   const esCreditoTienda = formaPago === 'CREDITO_TIENDA';
@@ -917,95 +993,54 @@ export default function FacturadorForm({
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. DATOS DEL CLIENTE / RECEPTOR                                           */}
+      {/* 1. DATOS DEL CLIENTE / RECEPTOR (TIPO a2 SOFTWAY)                         */}
       {/* ========================================================================= */}
       <div className="glass-card rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/[0.08] shadow-md bg-white dark:bg-[#0B0F19]/95 space-y-4">
         
-        {/* Encabezado del Cliente y Estado */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Encabezado del Cliente - Limpio y Rápido */}
+        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
+          <div className="flex items-center gap-2">
             <span className="text-xs font-mono font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
               <User className="w-4 h-4 text-red-600" />
               <span>Datos del Cliente / Receptor</span>
             </span>
 
-            {buscandoCliente && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 animate-pulse border border-blue-200 dark:border-blue-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
-                Buscando cédula...
-              </span>
-            )}
-
-            {clienteEncontrado && !buscandoCliente && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-700 dark:text-emerald-300 shadow-xs">
+            {clienteEncontrado && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 animate-in fade-in">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>✓ Registrado: <strong className="font-extrabold">{clienteEncontrado.nombre}</strong> (Datos cargados)</span>
-              </span>
-            )}
-
-            {!clienteEncontrado && !buscandoCliente && (cliente.documento || '').replace(/\D/g, '').length >= 5 && (cliente.nombre || '').trim().length >= 2 && (
-              <div className="inline-flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                  ℹ️ Nuevo: Se guardará con la venta
-                </span>
-                <button
-                  type="button"
-                  onClick={registrarClienteManual}
-                  disabled={guardandoClienteManual}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
-                  title="Guardar este cliente en la base de datos ahora mismo"
-                >
-                  {guardandoClienteManual ? 'Guardando...' : '+ Registrar Ahora'}
-                </button>
-              </div>
-            )}
-
-            {clienteGuardadoExitoso && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-sm">
-                ✓ ¡Cliente registrado con éxito!
+                <span>Cliente Registrado</span>
               </span>
             )}
           </div>
 
-          {/* Menú de Clientes Registrados */}
-          <div ref={clientSelectorRef} className="relative self-start sm:self-auto">
+          {(cliente.documento || cliente.nombre || cliente.telefono || cliente.direccion) && (
             <button
               type="button"
-              onClick={() => {
-                if (mostrarListaClientes) setMostrarListaClientes(false);
-                else cargarClientesRegistrados();
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+              onClick={limpiarDatosCliente}
+              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              title="Limpiar datos del cliente para escribir otro"
             >
-              <Users className="w-3.5 h-3.5 text-red-500" />
-              <span>Clientes Registrados</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <RotateCcw className="w-3 h-3" />
+              <span>Limpiar</span>
             </button>
-
-            {mostrarListaClientes && (
-              <div className="absolute right-0 top-full mt-1.5 w-72 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/[0.15] rounded-xl shadow-2xl z-50 p-2 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
-                {listaClientesRegistrados.map((c) => (
-                  <div
-                    key={c.id}
-                    onClick={() => seleccionarClienteRegistrado(c)}
-                    className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
-                  >
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{c.nombre}</p>
-                    <p className="text-[10px] font-mono text-slate-400">{c.cedula_rif}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Campos del cliente */}
+        {/* Campos del cliente con Búsqueda Escribible Integrada */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          {/* Cédula/RIF */}
-          <div>
-            <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
-              Cédula / RIF *
-            </label>
+          
+          {/* Cédula/RIF con Búsqueda Rápida Autocompletada Tipo a2 */}
+          <div ref={cedulaContainerRef} className="relative">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] font-mono font-bold text-slate-500 uppercase">
+                Cédula / RIF *
+              </label>
+              {buscandoClienteCedula && (
+                <span className="text-[10px] text-blue-500 font-bold animate-pulse">
+                  Buscando...
+                </span>
+              )}
+            </div>
             <div className="flex gap-1">
               <div className="flex bg-slate-100 dark:bg-[#06080F] rounded-lg p-0.5 border border-slate-300 dark:border-white/10">
                 {['V', 'J', 'E', 'G'].map((tipo) => {
@@ -1028,24 +1063,147 @@ export default function FacturadorForm({
                 type="text"
                 value={cliente.documento || ''}
                 onChange={(e) => handleDocumentoChange(e.target.value)}
+                onFocus={() => {
+                  if (sugerenciasCedula.length > 0) setMostrarSugerenciasCedula(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (sugerenciasCedula.length > 0) {
+                      seleccionarCliente(sugerenciasCedula[0]);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setMostrarSugerenciasCedula(false);
+                  }
+                }}
                 placeholder="26.946.393"
-                className="w-full h-9 px-2.5 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+                className={`w-full h-9 px-2.5 bg-slate-50 dark:bg-[#06080F] border rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-red-600 transition-all ${
+                  clienteEncontrado
+                    ? 'border-emerald-500/50 bg-emerald-500/[0.02]'
+                    : 'border-slate-300 dark:border-white/10'
+                }`}
               />
             </div>
+
+            {/* Desplegable Flotante de Sugerencias Tipo a2 */}
+            {mostrarSugerenciasCedula && sugerenciasCedula.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/[0.15] rounded-xl shadow-2xl p-1 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06] backdrop-blur-sm animate-in fade-in duration-150">
+                <div className="px-2.5 py-1 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  Clientes coincidentes (Tipo a2)
+                </div>
+                {sugerenciasCedula.map((c, idx) => (
+                  <div
+                    key={c.id || `${c.cedula_rif}_${idx}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      seleccionarCliente(c);
+                    }}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-colors flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-extrabold text-red-600 dark:text-red-400">
+                          {c.cedula_rif}
+                        </span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {c.nombre}
+                        </span>
+                      </div>
+                      {c.telefono && (
+                        <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1 mt-0.5">
+                          <Phone className="w-2.5 h-2.5" /> {c.telefono}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0 bg-slate-100 dark:bg-white/[0.08] px-1.5 py-0.5 rounded">
+                      Enter ↵
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Nombre o Razón Social */}
-          <div className="lg:col-span-2">
-            <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block mb-1">
-              Nombre o Razón Social *
-            </label>
+          {/* Nombre o Razón Social con Búsqueda Rápida Autocompletada Tipo a2 */}
+          <div ref={nombreContainerRef} className="lg:col-span-2 relative">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] font-mono font-bold text-slate-500 uppercase">
+                Nombre o Razón Social *
+              </label>
+              {buscandoClienteNombre && (
+                <span className="text-[10px] text-blue-500 font-bold animate-pulse">
+                  Buscando en directorio...
+                </span>
+              )}
+            </div>
             <input
               type="text"
               value={cliente.nombre || ''}
-              onChange={(e) => setCliente(prev => ({ ...prev, nombre: e.target.value }))}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCliente(prev => ({ ...prev, nombre: val }));
+                if (clienteEncontrado && clienteEncontrado.nombre !== val) {
+                  setClienteEncontrado(null);
+                }
+              }}
+              onFocus={() => {
+                if (sugerenciasNombre.length > 0) setMostrarSugerenciasNombre(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (sugerenciasNombre.length > 0) {
+                    seleccionarCliente(sugerenciasNombre[0]);
+                  }
+                } else if (e.key === 'Escape') {
+                  setMostrarSugerenciasNombre(false);
+                }
+              }}
               placeholder="Ej. Taller Los Andes C.A. o Juan Pérez"
-              className="w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border border-slate-300 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+              className={`w-full h-9 px-3 bg-slate-50 dark:bg-[#06080F] border rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-red-600 transition-all ${
+                clienteEncontrado
+                  ? 'border-emerald-500/50 bg-emerald-500/[0.02]'
+                  : 'border-slate-300 dark:border-white/10'
+              }`}
             />
+
+            {/* Desplegable Flotante de Sugerencias por Nombre Tipo a2 */}
+            {mostrarSugerenciasNombre && sugerenciasNombre.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#0B0F19] border-2 border-slate-300 dark:border-white/[0.15] rounded-xl shadow-2xl p-1 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06] backdrop-blur-sm animate-in fade-in duration-150">
+                <div className="px-2.5 py-1 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  Clientes encontrados por nombre (Tipo a2)
+                </div>
+                {sugerenciasNombre.map((c, idx) => (
+                  <div
+                    key={c.id || `${c.cedula_rif}_${idx}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      seleccionarCliente(c);
+                    }}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-colors flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {c.nombre}
+                      </p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-[10px] font-mono font-bold text-red-600 dark:text-red-400">
+                          {c.cedula_rif}
+                        </span>
+                        {c.telefono && (
+                          <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                            <Phone className="w-2.5 h-2.5" /> {c.telefono}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0 bg-slate-100 dark:bg-white/[0.08] px-1.5 py-0.5 rounded">
+                      Cargar
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Teléfono */}
