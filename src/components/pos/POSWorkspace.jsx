@@ -718,26 +718,15 @@ export default function POSWorkspace({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          {(cliente.documento || cliente.nombre) && (
             <button
               type="button"
-              onClick={setConsumidorFinal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/20 transition-colors cursor-pointer"
+              onClick={limpiarDatosCliente}
+              className="text-xs font-mono font-bold text-slate-400 hover:text-red-500 cursor-pointer px-2 py-1"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span>Contado / Consumidor Final</span>
+              Limpiar
             </button>
-
-            {(cliente.documento || cliente.nombre) && (
-              <button
-                type="button"
-                onClick={limpiarDatosCliente}
-                className="text-xs font-mono font-bold text-slate-400 hover:text-red-500 cursor-pointer px-2 py-1"
-              >
-                Limpiar
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Formulario en fila horizontal amplia (3 columnas en PC) */}
@@ -1461,14 +1450,6 @@ export default function POSWorkspace({
                 )}
               </div>
             </div>
-
-            {/* Fila extra explicativa para Cashea (Cuota Inicial + 3 Cuotas) */}
-            {formaPago === 'CASHEA' && (
-              <div className="mt-2 pt-2 border-t border-purple-200/50 dark:border-purple-500/20 bg-purple-500/10 rounded-xl p-2.5 text-center sm:text-left flex flex-wrap items-center justify-between gap-1 text-[11px] text-purple-700 dark:text-purple-300 font-bold">
-                <span>Inicial Cashea (~40%): {formatUSD(totals.totalUSD * 0.4)} ({formatVES(totals.totalBs * 0.4)})</span>
-                <span className="opacity-80">+ 3 cuotas de {formatUSD((totals.totalUSD * 0.6) / 3)}</span>
-              </div>
-            )}
           </div>
         </div>
 
