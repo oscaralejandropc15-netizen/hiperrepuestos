@@ -1916,237 +1916,123 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
       )}
 
       {/* ========================================================================= */}
-      {/* CUERPO PRINCIPAL: SIDEBAR + CONTENIDO DE LA PESTAÑA ACTIVA                */}
+      {/* BARRA DE PESTAÑAS HORIZONTAL EJECUTIVA (100% ANCHO DE PANTALLA)           */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+      <div className="bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-2xl p-2 shadow-xs">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+          {/* Tab 1: Inventario */}
+          <button
+            type="button"
+            onClick={() => setTabActiva('inventario')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              tabActiva === 'inventario'
+                ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>Inventario (CRUD)</span>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+              tabActiva === 'inventario' ? 'bg-black/20 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-500'
+            }`}>
+              {productos.length}
+            </span>
+          </button>
 
-        {/* SUB-NAVEGACIÓN HORIZONTAL LIMPIA PARA CELULARES (MD:HIDDEN) */}
-        <div className="md:hidden col-span-1">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 no-scrollbar">
-            <button
-              type="button"
-              onClick={() => setTabActiva('inventario')}
-              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                tabActiva === 'inventario'
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
-              }`}
-            >
-              <Package className="w-3.5 h-3.5" />
-              <span>Inventario</span>
-              <span className="font-mono text-[10px] opacity-80">({productos.length})</span>
-            </button>
+          {/* Tab 2: Líneas y Sublíneas */}
+          <button
+            type="button"
+            onClick={() => setTabActiva('lineas')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              (tabActiva === 'lineas' || tabActiva === 'clasificaciones')
+                ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-blue-500" />
+            <span>Sistemas y Líneas</span>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+              (tabActiva === 'lineas' || tabActiva === 'clasificaciones') ? 'bg-black/20 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-500'
+            }`}>
+              {listaLineas.length}
+            </span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setTabActiva('lineas')}
-              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                (tabActiva === 'lineas' || tabActiva === 'clasificaciones')
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5 text-blue-500" />
-              <span>Líneas</span>
-            </button>
+          {/* Tab 3: Marcas */}
+          <button
+            type="button"
+            onClick={() => setTabActiva('marcas')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              tabActiva === 'marcas'
+                ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
+            }`}
+          >
+            <Tag className="w-4 h-4 text-emerald-500" />
+            <span>Marcas de Repuestos</span>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+              tabActiva === 'marcas' ? 'bg-black/20 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-500'
+            }`}>
+              {listaMarcas.length}
+            </span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setTabActiva('marcas')}
-              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                tabActiva === 'marcas'
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
-              }`}
-            >
-              <Tag className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Marcas</span>
-            </button>
+          {/* Tab 4: Modelos */}
+          <button
+            type="button"
+            onClick={() => setTabActiva('modelos')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              tabActiva === 'modelos'
+                ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
+            }`}
+          >
+            <Car className="w-4 h-4 text-purple-500" />
+            <span>Modelos de Vehículos</span>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+              tabActiva === 'modelos' ? 'bg-black/20 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-500'
+            }`}>
+              {listaModelos.length}
+            </span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setTabActiva('modelos')}
-              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                tabActiva === 'modelos'
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
-              }`}
-            >
-              <Car className="w-3.5 h-3.5 text-purple-500" />
-              <span>Modelos</span>
-            </button>
+          {/* Tab 5: Ingreso */}
+          <button
+            type="button"
+            onClick={() => setTabActiva('compras')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              tabActiva === 'compras'
+                ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
+            }`}
+          >
+            <Truck className="w-4 h-4" />
+            <span>Ingreso de Mercancía</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setTabActiva('compras')}
-              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                tabActiva === 'compras'
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
-              }`}
-            >
-              <Truck className="w-3.5 h-3.5" />
-              <span>Ingreso</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTabActiva('cxc')}
-              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                tabActiva === 'cxc'
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
-              }`}
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>CxC</span>
-              {totalDeudaPendiente > 0 && (
-                <span className="font-mono text-[10px] text-amber-500 font-black">
-                  (${Math.round(totalDeudaPendiente)})
-                </span>
-              )}
-            </button>
-          </div>
+          {/* Tab 6: CxC */}
+          <button
+            type="button"
+            onClick={() => setTabActiva('cxc')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              tabActiva === 'cxc'
+                ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Cuentas por Cobrar</span>
+            {totalDeudaPendiente > 0 && (
+              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black">
+                ${Math.round(totalDeudaPendiente)}
+              </span>
+            )}
+          </button>
         </div>
+      </div>
 
-        {/* SIDEBAR DE PESTAÑAS (hidden md:block 3 cols en desktop) */}
-        <div className="hidden md:block md:col-span-3 space-y-2">
-          <div className="glass-card rounded-2xl p-2 border border-slate-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[#0B0F19]/95 space-y-1">
-            
-            <button
-              type="button"
-              onClick={() => setTabActiva('inventario')}
-              className={`w-full p-3 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                tabActiva === 'inventario'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Package className="w-4 h-4" />
-                <span>Inventario (CRUD)</span>
-              </div>
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                tabActiva === 'inventario' ? 'bg-black/20 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-              }`}>
-                {productos.length}
-              </span>
-            </button>
-
-            {/* SECCIÓN: CLASIFICACIONES INDEPENDIENTES Y HOLGADAS */}
-            <div className="pt-2 pb-0.5 px-2 text-[10px] font-mono font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-              Clasificaciones
-            </div>
-
-            {/* PESTAÑA: LÍNEAS Y SUBLÍNEAS */}
-            <button
-              type="button"
-              onClick={() => setTabActiva('lineas')}
-              className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                (tabActiva === 'lineas' || tabActiva === 'clasificaciones')
-                  ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Layers className="w-4 h-4 text-blue-500" />
-                <span>Líneas y Sublíneas</span>
-              </div>
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                (tabActiva === 'lineas' || tabActiva === 'clasificaciones') ? 'bg-black/20 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-              }`}>
-                {listaLineas.length}
-              </span>
-            </button>
-
-            {/* PESTAÑA: MARCAS DE REPUESTOS */}
-            <button
-              type="button"
-              onClick={() => setTabActiva('marcas')}
-              className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                tabActiva === 'marcas'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Tag className="w-4 h-4 text-emerald-500" />
-                <span>Marcas de Repuestos</span>
-              </div>
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                tabActiva === 'marcas' ? 'bg-black/20 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-              }`}>
-                {listaMarcas.length}
-              </span>
-            </button>
-
-            {/* PESTAÑA: MODELOS DE VEHÍCULOS */}
-            <button
-              type="button"
-              onClick={() => setTabActiva('modelos')}
-              className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                tabActiva === 'modelos'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Car className="w-4 h-4 text-purple-500" />
-                <span>Modelos de Vehículos</span>
-              </div>
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                tabActiva === 'modelos' ? 'bg-black/20 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-              }`}>
-                {listaModelos.length}
-              </span>
-            </button>
-
-            {/* SEPARADOR: OPERACIONES */}
-            <div className="pt-2 pb-0.5 px-2 text-[10px] font-mono font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-              Operaciones
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setTabActiva('compras')}
-              className={`w-full p-3 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                tabActiva === 'compras'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Truck className="w-4 h-4" />
-                <span>Ingreso de Mercancía</span>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTabActiva('cxc')}
-              className={`w-full p-3 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                tabActiva === 'cxc'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <CreditCard className="w-4 h-4" />
-                <span>Cuentas por Cobrar</span>
-              </div>
-              {totalDeudaPendiente > 0 && (
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 font-black">
-                  ${Math.round(totalDeudaPendiente)}
-                </span>
-              )}
-            </button>
-
-          </div>
-        </div>
-
-        {/* CONTENIDO PRINCIPAL (9 cols en desktop) */}
-        <div className="md:col-span-9 space-y-4">
+      {/* CONTENIDO PRINCIPAL A 100% DE ANCHO SIN APRETURAS */}
+      <div className="space-y-4">
 
           {/* =================================================================== */}
           {/* PESTAÑA 1: INVENTARIO (CRUD COMPLETO)                               */}
@@ -2649,27 +2535,25 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
                                 : 'border-slate-200 dark:border-white/[0.06] hover:bg-slate-50 dark:hover:bg-white/[0.03]'
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs flex-shrink-0 ${
-                                isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300'
+                            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                                isSelected ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'
                               }`}>
                                 <Layers className="w-4 h-4" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className={`font-bold text-xs ${isSelected ? 'text-blue-600 dark:text-blue-400 font-black' : 'text-slate-800 dark:text-slate-200'}`}>
-                                    {linea}
+                                <p className={`font-bold text-xs truncate ${isSelected ? 'text-blue-600 dark:text-blue-400 font-black' : 'text-slate-800 dark:text-slate-200'}`} title={linea}>
+                                  {linea}
+                                </p>
+                                {isRecienCreada && (
+                                  <span className="px-1.5 py-0.5 rounded-full font-mono text-[9px] font-black bg-emerald-500 text-white animate-pulse inline-block mt-0.5">
+                                    ¡NUEVA!
                                   </span>
-                                  {isRecienCreada && (
-                                    <span className="px-1.5 py-0.2 rounded-full font-mono text-[9px] font-black bg-emerald-500 text-white animate-pulse flex-shrink-0">
-                                      ¡NUEVA!
-                                    </span>
-                                  )}
-                                </div>
+                                )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-black ${
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-black shrink-0 ${
                                 count > 0 ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-white/[0.06] text-slate-400'
                               }`}>
                                 {count} rep
@@ -2801,7 +2685,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
                   </div>
 
                   {/* Grid Holgado de Sublíneas sin cortes */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[520px] overflow-y-auto pr-1">
                     {sublineasParaMaster.map((sublinea) => {
                       const count = conteoPorSublinea[sublinea] || conteoPorSublinea[sublinea.toLowerCase()] || 0;
                       const isRecienAgregada = ultimoItemCreado?.tipo === 'sublinea' && ultimoItemCreado?.valor?.toLowerCase() === sublinea.toLowerCase();
@@ -3440,8 +3324,6 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
           )}
 
         </div>
-
-      </div>
 
       {/* ========================================================================= */}
       {/* MODAL PARA CREAR O EDITAR REPUESTO EN EL INVENTARIO                       */}
