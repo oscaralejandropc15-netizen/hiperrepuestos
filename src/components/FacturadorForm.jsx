@@ -268,6 +268,7 @@ export default function FacturadorForm({
 
   const cedulaContainerRef = useRef(null);
   const nombreContainerRef = useRef(null);
+  const inputBusquedaRef = useRef(null);
 
   // =========================================================================
   // ESTADOS DE LA BÚSQUEDA Y FILTROS DE INVENTARIO
