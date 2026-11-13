@@ -569,7 +569,6 @@ function SearchableComboboxModal({
 
 export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
   const [tabActiva, setTabActiva] = useState('inventario'); // 'inventario' | 'clasificaciones' | 'compras' | 'cxc'
-  const [menuLateralMovilAbierto, setMenuLateralMovilAbierto] = useState(false);
 
   // =========================================================================
   // TAB 1: GESTIÓN DE INVENTARIO (CRUD)
@@ -1921,44 +1920,13 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
 
-        {/* BARRA DE NAVEGACIÓN MÓVIL CON MENÚ LATERAL DESPLEGABLE (DRAWER) */}
-        <div className="md:hidden col-span-1 space-y-2">
-          {/* Fila principal móvil: Botón Menú Lateral + Indicador de Sección Activa */}
-          <div className="glass-card rounded-2xl p-2.5 border border-slate-200 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[#0B0F19]/95 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setMenuLateralMovilAbierto(true)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-xl text-xs font-black shadow-md shadow-red-950/20 transition-all cursor-pointer"
-            >
-              <Menu className="w-4 h-4 stroke-[2.5]" />
-              <span>Menú Lateral</span>
-            </button>
-
-            {/* Selector interactivo de la sección activa */}
-            <button
-              type="button"
-              onClick={() => setMenuLateralMovilAbierto(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/10 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 transition-colors cursor-pointer truncate max-w-[62%]"
-            >
-              <span className="text-[10px] uppercase font-mono text-slate-400">Ver:</span>
-              <span className="text-red-600 dark:text-red-400 font-black truncate">
-                {tabActiva === 'inventario' ? `Inventario (${productos.length})` :
-                 (tabActiva === 'lineas' || tabActiva === 'clasificaciones') ? `Líneas (${listaLineas.length})` :
-                 tabActiva === 'marcas' ? `Marcas (${listaMarcas.length})` :
-                 tabActiva === 'modelos' ? `Modelos (${listaModelos.length})` :
-                 tabActiva === 'compras' ? 'Ingreso Compras' :
-                 tabActiva === 'cxc' ? 'Cuentas por Cobrar' : tabActiva}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-            </button>
-          </div>
-
-          {/* Atajos Rápidos en Chips Deslizables para Acceso con 1 Toque */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        {/* SUB-NAVEGACIÓN HORIZONTAL LIMPIA PARA CELULARES (MD:HIDDEN) */}
+        <div className="md:hidden col-span-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 no-scrollbar">
             <button
               type="button"
               onClick={() => setTabActiva('inventario')}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 tabActiva === 'inventario'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
@@ -1966,12 +1934,13 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
             >
               <Package className="w-3.5 h-3.5" />
               <span>Inventario</span>
+              <span className="font-mono text-[10px] opacity-80">({productos.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setTabActiva('lineas')}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 (tabActiva === 'lineas' || tabActiva === 'clasificaciones')
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
@@ -1984,7 +1953,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
             <button
               type="button"
               onClick={() => setTabActiva('marcas')}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 tabActiva === 'marcas'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
@@ -1997,7 +1966,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
             <button
               type="button"
               onClick={() => setTabActiva('modelos')}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 tabActiva === 'modelos'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
@@ -2010,7 +1979,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
             <button
               type="button"
               onClick={() => setTabActiva('compras')}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 tabActiva === 'compras'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
@@ -2023,7 +1992,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
             <button
               type="button"
               onClick={() => setTabActiva('cxc')}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 tabActiva === 'cxc'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-white dark:bg-[#0B0F19] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
@@ -2039,216 +2008,6 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
             </button>
           </div>
         </div>
-
-        {/* =================================================================== */}
-        {/* MENÚ LATERAL MÓVIL EN FORMATO CAJÓN (OFF-CANVAS DRAWER)             */}
-        {/* =================================================================== */}
-        {menuLateralMovilAbierto && typeof document !== 'undefined' && createPortal(
-          <div className="fixed inset-0 z-[999999] flex md:hidden">
-            {/* Telón de fondo con desenfoque suave */}
-            <div 
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
-              onClick={() => setMenuLateralMovilAbierto(false)}
-            />
-
-            {/* Contenedor del Cajón Lateral que entra suavemente por la izquierda */}
-            <div className="relative w-[85%] max-w-[320px] h-full bg-white dark:bg-[#0B0F19] border-r border-slate-200 dark:border-white/[0.1] shadow-2xl flex flex-col z-10 animate-slide-right overflow-hidden">
-              
-              {/* Encabezado del Cajón */}
-              <div className="p-4 border-b border-slate-200 dark:border-white/[0.08] flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#06080F]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md">
-                    <Boxes className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white">Menú Administrativo</h3>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Hiper Repuestos Familycar</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setMenuLateralMovilAbierto(false)}
-                  className="w-8 h-8 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
-                  title="Cerrar menú"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Contenido vertical del Menú */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                {/* INVENTARIO */}
-                <div className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTabActiva('inventario');
-                      setMenuLateralMovilAbierto(false);
-                    }}
-                    className={`w-full p-3 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                      tabActiva === 'inventario'
-                        ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Package className="w-4 h-4" />
-                      <span>Inventario (CRUD)</span>
-                    </div>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                      tabActiva === 'inventario' ? 'bg-black/25 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-                    }`}>
-                      {productos.length}
-                    </span>
-                  </button>
-                </div>
-
-                {/* CLASIFICACIONES */}
-                <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-white/[0.06]">
-                  <span className="px-2 text-[10px] font-mono font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block mb-1">
-                    Clasificaciones de Catálogo
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTabActiva('lineas');
-                      setMenuLateralMovilAbierto(false);
-                    }}
-                    className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                      (tabActiva === 'lineas' || tabActiva === 'clasificaciones')
-                        ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Layers className="w-4 h-4 text-blue-500" />
-                      <span>Líneas y Sublíneas</span>
-                    </div>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                      (tabActiva === 'lineas' || tabActiva === 'clasificaciones') ? 'bg-black/25 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-                    }`}>
-                      {listaLineas.length}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTabActiva('marcas');
-                      setMenuLateralMovilAbierto(false);
-                    }}
-                    className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                      tabActiva === 'marcas'
-                        ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Tag className="w-4 h-4 text-emerald-500" />
-                      <span>Marcas de Repuestos</span>
-                    </div>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                      tabActiva === 'marcas' ? 'bg-black/25 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-                    }`}>
-                      {listaMarcas.length}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTabActiva('modelos');
-                      setMenuLateralMovilAbierto(false);
-                    }}
-                    className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                      tabActiva === 'modelos'
-                        ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Car className="w-4 h-4 text-purple-500" />
-                      <span>Modelos de Vehículos</span>
-                    </div>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                      tabActiva === 'modelos' ? 'bg-black/25 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-                    }`}>
-                      {listaModelos.length}
-                    </span>
-                  </button>
-                </div>
-
-                {/* OPERACIONES */}
-                <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-white/[0.06]">
-                  <span className="px-2 text-[10px] font-mono font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block mb-1">
-                    Operaciones y Caja
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTabActiva('compras');
-                      setMenuLateralMovilAbierto(false);
-                    }}
-                    className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                      tabActiva === 'compras'
-                        ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Truck className="w-4 h-4" />
-                      <span>Ingreso de Mercancía</span>
-                    </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTabActiva('cxc');
-                      setMenuLateralMovilAbierto(false);
-                    }}
-                    className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                      tabActiva === 'cxc'
-                        ? 'bg-red-600 text-white shadow-md shadow-red-950/20'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="w-4 h-4" />
-                      <span>Cuentas por Cobrar</span>
-                    </div>
-                    {totalDeudaPendiente > 0 && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-500 font-black">
-                        ${Math.round(totalDeudaPendiente)}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Pie del Cajón */}
-              <div className="p-3 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#06080F]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuLateralMovilAbierto(false);
-                    onVolverAlMostrador();
-                  }}
-                  className="w-full py-2.5 px-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-                >
-                  <span>Ir a Cobrar (Mostrador)</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-            </div>
-          </div>,
-          document.body
-        )}
 
         {/* SIDEBAR DE PESTAÑAS (hidden md:block 3 cols en desktop) */}
         <div className="hidden md:block md:col-span-3 space-y-2">
