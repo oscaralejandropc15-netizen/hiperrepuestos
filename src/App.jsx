@@ -107,9 +107,11 @@ export default function App() {
       const data = await fetchTasaBCV();
       if (data && data.rate) {
         setBcvInfo(data);
-        // Si es carga inicial, pulsación manual, o si el input estaba vacío, sincronizar la tasa activa
+        // Si es carga inicial, pulsación manual, o si el input estaba vacío, sincronizar la tasa activa con exactamente 2 decimales
         if (actualizarInputActivo || !tasaBCV) {
-          setTasaBCV(data.usdOficial || data.rate);
+          const raw = data.usdOficial || data.rate;
+          const num = typeof raw === 'number' ? raw : parseFloat(raw);
+          setTasaBCV(!isNaN(num) ? num.toFixed(2) : String(raw));
         }
       }
     } catch (err) {
@@ -181,7 +183,7 @@ export default function App() {
       return null;
     }
 
-    const rateClean = parseVenezuelanNumber(tasaBCV);
+    const rateClean = Math.round((parseVenezuelanNumber(tasaBCV) || 1) * 100) / 100;
     const rate = rateClean > 0 ? rateClean : 1;
 
     const itemsValidos = items.filter((it) => {

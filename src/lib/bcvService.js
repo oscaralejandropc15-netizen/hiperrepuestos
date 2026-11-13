@@ -63,11 +63,11 @@ export async function fetchTasaBCV() {
       const fechaParalelo = (Array.isArray(dolaresData) && dolaresData.find(d => d.fuente === 'paralelo')?.fechaActualizacion) || null;
 
       const payload = {
-        rate: bcvUSD.toFixed(4),
-        usdOficial: bcvUSD.toFixed(4),
-        eurOficial: bcvEUR ? bcvEUR.toFixed(4) : (bcvUSD * 1.08).toFixed(4),
-        usdParalelo: paraleloUSD ? paraleloUSD.toFixed(4) : (bcvUSD * 1.12).toFixed(4),
-        binanceUSDT: binanceFinal ? binanceFinal.toFixed(4) : (bcvUSD * 1.12).toFixed(4),
+        rate: bcvUSD.toFixed(2),
+        usdOficial: bcvUSD.toFixed(2),
+        eurOficial: bcvEUR ? bcvEUR.toFixed(2) : (bcvUSD * 1.08).toFixed(2),
+        usdParalelo: paraleloUSD ? paraleloUSD.toFixed(2) : (bcvUSD * 1.12).toFixed(2),
+        binanceUSDT: binanceFinal ? binanceFinal.toFixed(2) : (bcvUSD * 1.12).toFixed(2),
         fechaActualizacion,
         fechaParalelo,
         timestamp: Date.now(),
@@ -87,8 +87,11 @@ export async function fetchTasaBCV() {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
+        const rateNum = parseFloat(parsed.rate || parsed.usdOficial);
         return {
           ...parsed,
+          rate: !isNaN(rateNum) ? rateNum.toFixed(2) : parsed.rate,
+          usdOficial: !isNaN(rateNum) ? rateNum.toFixed(2) : parsed.usdOficial,
           origen: 'Caché local (Sin conexión)',
         };
       } catch (e) {
@@ -98,11 +101,11 @@ export async function fetchTasaBCV() {
 
     // Fallback de contingencia si no hay red ni caché
     return {
-      rate: '896.1200',
-      usdOficial: '896.1200',
-      eurOficial: '1004.9500',
-      usdParalelo: '1011.5600',
-      binanceUSDT: '1011.5600',
+      rate: '896.12',
+      usdOficial: '896.12',
+      eurOficial: '1004.95',
+      usdParalelo: '1011.56',
+      binanceUSDT: '1011.56',
       fechaActualizacion: new Date().toISOString(),
       timestamp: Date.now(),
       origen: 'Referencia fija (Modo Respaldo)',

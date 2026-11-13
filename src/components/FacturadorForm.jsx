@@ -800,16 +800,24 @@ export default function FacturadorForm({
               Tasa de Cambio:
             </span>
 
-            {/* INPUT NUMÉRICO TOTALMENTE EDITABLE */}
+            {/* INPUT NUMÉRICO TOTALMENTE EDITABLE CON 2 DECIMALES */}
             <div className="relative flex items-center">
               <input
                 type="number"
-                step="any"
+                step="0.01"
                 value={tasaBCV}
                 onChange={(e) => setTasaBCV(e.target.value)}
+                onBlur={() => {
+                  if (tasaBCV) {
+                    const n = parseVenezuelanNumber(tasaBCV);
+                    if (!isNaN(n) && n > 0) {
+                      setTasaBCV(n.toFixed(2));
+                    }
+                  }
+                }}
                 placeholder="0.00"
                 className="w-28 sm:w-36 h-9 px-2.5 bg-slate-50 dark:bg-[#06080F] border-2 border-emerald-500/60 focus:border-emerald-500 rounded-xl font-mono font-black text-sm sm:text-base text-emerald-700 dark:text-emerald-300 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500/25 shadow-inner"
-                title="Tasa editable: puedes borrar y escribir cualquier tasa (ej. 910.00) y todos los precios se actualizarán de inmediato"
+                title="Tasa editable con 2 decimales: puedes escribir cualquier tasa (ej. 68.57) y todos los precios se actualizarán de inmediato"
               />
               <span className="text-xs font-mono font-bold text-slate-500 ml-1.5">Bs. / $</span>
             </div>

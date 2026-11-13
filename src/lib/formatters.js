@@ -113,7 +113,7 @@ export function formatDate(dateString) {
  * 4. Crédito Tienda: tipo_documento = 'nota_entrega', 0% IVA.
  */
 export function calculateTotals(items = [], tasaBCV = 1, monedaIngreso = 'USD', formaPago = 'EFECTIVO', tipoDocumento = 'nota_entrega') {
-  const rateClean = parseVenezuelanNumber(tasaBCV);
+  const rateClean = Math.round((parseVenezuelanNumber(tasaBCV) || 1) * 100) / 100;
   const rate = rateClean > 0 ? rateClean : 1;
 
   let baseImponibleUSD = 0;
