@@ -409,9 +409,9 @@ export default function FacturadorForm({
     }
   };
 
-  // Cargar productos reactivamente al escribir o cambiar filtros
+  // Cargar productos reactivamente al escribir o cambiar filtros (SOLO si el usuario escribió o eligió un filtro)
   useEffect(() => {
-    if (!busquedaActiva && !mostrarFiltrosAvanzados) {
+    if (!busquedaActiva) {
       setProductosEncontrados([]);
       return;
     }
@@ -419,7 +419,7 @@ export default function FacturadorForm({
       buscarProductos(busquedaTexto, filtroLinea, filtroSublinea, filtroMarca, filtroVehiculo);
     }, 150);
     return () => clearTimeout(timer);
-  }, [busquedaTexto, filtroLinea, filtroSublinea, filtroMarca, filtroVehiculo, busquedaActiva, mostrarFiltrosAvanzados]);
+  }, [busquedaTexto, filtroLinea, filtroSublinea, filtroMarca, filtroVehiculo, busquedaActiva]);
 
   // Limpiar todos los filtros y repliegue de búsqueda
   const limpiarFiltros = () => {
@@ -1148,56 +1148,75 @@ export default function FacturadorForm({
         </div>
 
         {/* ========================================================================= */}
-        {/* PANEL DESGLOSABLE DE BÚSQUEDA: SOLO SE MUESTRA SI ESTÁ BUSCANDO           */}
+        {/* 1. SELECTORES DE FILTRO AVANZADOS: SE DESPLIEGAN AL TOCAR "FILTROS"       */}
         {/* ========================================================================= */}
-        {(busquedaActiva || mostrarFiltrosAvanzados) && (
-          <div className="p-3 sm:p-4 rounded-2xl bg-slate-50 dark:bg-[#06080F]/90 border-2 border-red-500/30 space-y-3 animate-in fade-in duration-200">
-            
-            {/* Filtros avanzados si están desplegados */}
-            {mostrarFiltrosAvanzados && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pb-2 border-b border-slate-200 dark:border-white/[0.08]">
-                <SearchableFilterSelect
-                  label="1. Línea / Sistema:"
-                  icon={Layers}
-                  placeholder="Línea..."
-                  allLabel="Todas las Líneas"
-                  value={filtroLinea}
-                  onChange={(val) => {
-                    setFiltroLinea(val);
-                    setFiltroSublinea('');
-                  }}
-                  options={listaLineas}
-                />
-                <SearchableFilterSelect
-                  label="2. Tipo de Pieza:"
-                  icon={Tag}
-                  placeholder="Sub-línea..."
-                  allLabel="Todos los Tipos"
-                  value={filtroSublinea}
-                  onChange={(val) => setFiltroSublinea(val)}
-                  options={sublineasDisponibles}
-                />
-                <SearchableFilterSelect
-                  label="3. Marca:"
-                  icon={Sparkles}
-                  placeholder="Marca..."
-                  allLabel="Todas las Marcas"
-                  value={filtroMarca}
-                  onChange={(val) => setFiltroMarca(val)}
-                  options={listaMarcas}
-                />
-                <SearchableFilterSelect
-                  label="4. Vehículo:"
-                  icon={Car}
-                  placeholder="Vehículo..."
-                  allLabel="Todos los Vehículos"
-                  value={filtroVehiculo}
-                  onChange={(val) => setFiltroVehiculo(val)}
-                  options={listaVehiculos}
-                />
-              </div>
-            )}
+        {mostrarFiltrosAvanzados && (
+          <div className="p-3 sm:p-4 rounded-2xl bg-slate-50 dark:bg-[#06080F]/90 border border-slate-200 dark:border-white/10 space-y-2.5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-white/[0.08]">
+              <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-red-500" />
+                <span>Filtrar por Línea, Tipo de Pieza, Marca o Vehículo:</span>
+              </span>
+              {hayFiltrosActivos && (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  className="px-2 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-lg cursor-pointer"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <SearchableFilterSelect
+                label="1. Línea / Sistema:"
+                icon={Layers}
+                placeholder="Elige línea..."
+                allLabel="Todas las Líneas"
+                value={filtroLinea}
+                onChange={(val) => {
+                  setFiltroLinea(val);
+                  setFiltroSublinea('');
+                }}
+                options={listaLineas}
+              />
+              <SearchableFilterSelect
+                label="2. Tipo de Pieza:"
+                icon={Tag}
+                placeholder="Elige tipo..."
+                allLabel="Todos los Tipos"
+                value={filtroSublinea}
+                onChange={(val) => setFiltroSublinea(val)}
+                options={sublineasDisponibles}
+              />
+              <SearchableFilterSelect
+                label="3. Marca:"
+                icon={Sparkles}
+                placeholder="Elige marca..."
+                allLabel="Todas las Marcas"
+                value={filtroMarca}
+                onChange={(val) => setFiltroMarca(val)}
+                options={listaMarcas}
+              />
+              <SearchableFilterSelect
+                label="4. Vehículo:"
+                icon={Car}
+                placeholder="Elige vehículo..."
+                allLabel="Todos los Vehículos"
+                value={filtroVehiculo}
+                onChange={(val) => setFiltroVehiculo(val)}
+                options={listaVehiculos}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 2. PANEL DE RESULTADOS DE BÚSQUEDA: SOLO SE MUESTRA SI HAY BÚSQUEDA ACTIVA */}
+        {/* ========================================================================= */}
+        {busquedaActiva && (
+          <div className="p-3 sm:p-4 rounded-2xl bg-slate-50 dark:bg-[#06080F]/90 border-2 border-red-500/30 space-y-3 animate-in fade-in duration-200">
             {/* Cabecera de resultados */}
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
