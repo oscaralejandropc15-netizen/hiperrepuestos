@@ -647,7 +647,7 @@ export default function POSWorkspace({
                 Punto de Venta y Facturación
               </h1>
               <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                BCV: {formatVES(tasaActivaNum)} Bs/$
+                Tasa BCV: {formatVES(tasaActivaNum)}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1103,10 +1103,10 @@ export default function POSWorkspace({
                         <div className="pt-2 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
                           <div>
                             <div className="text-xs font-mono font-black text-slate-900 dark:text-white">
-                              ${formatUSD(precios.pDivisa)}
+                              {formatUSD(precios.pDivisa)}
                             </div>
                             <div className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                              Bs. {formatVES(precios.pBs)}
+                              {formatVES(precios.pBs)}
                             </div>
                           </div>
 
@@ -1229,10 +1229,10 @@ export default function POSWorkspace({
                       ) : (
                         <div>
                           <div className="font-bold text-slate-900 dark:text-white">
-                            ${formatUSD(it.precio_divisa || it.precio)}
+                            {formatUSD(it.precio_divisa || it.precio)}
                           </div>
                           <div className="text-[10px] text-slate-400">
-                            Bs. {formatVES(it.precio_bs)}
+                            {formatVES(it.precio_bs)}
                           </div>
                         </div>
                       )}
@@ -1241,10 +1241,10 @@ export default function POSWorkspace({
                     {/* Subtotal */}
                     <td className="py-3 px-3 text-right font-mono">
                       <div className="font-bold text-slate-900 dark:text-white text-xs">
-                        ${formatUSD(it.subtotal_usd || 0)}
+                        {formatUSD(it.subtotal_usd || 0)}
                       </div>
                       <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        Bs. {formatVES(it.subtotal_bs || 0)}
+                        {formatVES(it.subtotal_bs || 0)}
                       </div>
                     </td>
 
@@ -1381,14 +1381,14 @@ export default function POSWorkspace({
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Subtotal Neto:</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                  ${formatUSD(totals.baseImponible)} / Bs. {formatVES(totals.baseImponibleBs)}
+                  {formatUSD(totals.baseImponible)} / {formatVES(totals.baseImponibleBs)}
                 </span>
               </div>
 
               {formaPago === 'CASHEA' && (
                 <div className="flex justify-between text-purple-600 font-bold">
                   <span>Recargo Cashea (12%):</span>
-                  <span>+${formatUSD((totals.totalUSD || 0) - (totals.baseImponible || 0))}</span>
+                  <span>+{formatUSD((totals.totalUSD || 0) - (totals.baseImponible || 0))}</span>
                 </div>
               )}
 
@@ -1396,7 +1396,7 @@ export default function POSWorkspace({
                 <div className="flex justify-between text-slate-500 dark:text-slate-400">
                   <span>IVA (16%):</span>
                   <span className="font-bold text-slate-800 dark:text-slate-200">
-                    +${formatUSD(totals.iva)} / Bs. {formatVES(totals.ivaBs)}
+                    +{formatUSD(totals.iva)} / {formatVES(totals.ivaBs)}
                   </span>
                 </div>
               )}
@@ -1409,15 +1409,15 @@ export default function POSWorkspace({
                   Total a Cobrar
                 </span>
                 <span className="text-[10px] text-slate-400">
-                  Tasa: {formatVES(tasaActivaNum)} Bs/$
+                  Tasa: {formatVES(tasaActivaNum)}
                 </span>
               </div>
               <div className="text-right">
                 <div className="text-2xl sm:text-3xl font-heading font-black text-red-600 dark:text-red-400 leading-tight">
-                  ${formatUSD(totals.totalUSD)}
+                  {formatUSD(totals.totalUSD)}
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                  Bs. {formatVES(totals.totalBs)}
+                  {formatVES(totals.totalBs)}
                 </div>
               </div>
             </div>
