@@ -8,6 +8,8 @@ import AdminDashboard from './components/AdminDashboard';
 import GuiaImprimible from './components/GuiaImprimible';
 import HistorialPage from './components/HistorialPage';
 import AuthGate from './components/AuthGate';
+import AppLayout from './components/layout/AppLayout';
+import POSWorkspace from './components/pos/POSWorkspace';
 import { Wrench, History, LogOut, Printer, Download, ArrowLeft, CheckCircle2, Receipt, Sun, Moon, Boxes, LayoutDashboard, ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -567,244 +569,109 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#06080F] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
-      {/* Barra de Encabezado Superior Responsiva con Glassmorphism */}
-      <header className="no-print bg-white/95 dark:bg-[#0B0F19]/85 backdrop-blur-xl border-b border-slate-200 dark:border-white/[0.08] sticky top-0 z-40 shadow-sm dark:shadow-xl dark:shadow-black/40">
-        <div className="w-full max-w-[98vw] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
-          {/* Logo y Nombre del Negocio */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 to-rose-600 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-300"></div>
-              <img
-                src="/logo.png"
-                alt="Logo Familycar"
-                className="relative w-8 h-8 sm:w-11 sm:h-11 object-contain rounded-full border border-slate-200 dark:border-white/20 bg-white dark:bg-slate-950 shadow-md flex-shrink-0"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-xs sm:text-lg font-black tracking-wider text-slate-900 dark:text-white font-heading uppercase">
-                  FAMILYCAR
-                </span>
-                <span className="hidden xs:inline-block text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 bg-red-500/10 dark:bg-gradient-to-r dark:from-red-500/20 dark:to-rose-500/20 text-red-600 dark:text-rose-300 border border-red-500/30 dark:border-red-500/40 rounded-full font-bold uppercase tracking-widest shadow-sm">
-                  Mostrador
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono hidden md:block tracking-wide">
-                RIF: J-412654489 • Charallave, Miranda
-              </p>
-            </div>
-          </div>
-
-          {/* Pestañas de Navegación Rápida y Acciones Responsivas */}
-          <div className="flex items-center gap-1 sm:gap-2.5 flex-shrink-0">
-            {/* Navegación Punto de Venta / Administración / Historial */}
-            <div className="flex bg-slate-200/80 dark:bg-[#06080F]/90 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl border border-slate-300 dark:border-white/[0.08] shadow-inner">
-              <button
-                type="button"
-                onClick={() => { setVista('facturador'); setVistaImpresion(null); }}
-                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 min-h-[34px] sm:min-h-[38px] cursor-pointer ${
-                  vista === 'facturador' && !vistaImpresion
-                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-900/40 scale-[1.02]'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/[0.04]'
-                }`}
-                title="Punto de Venta"
-              >
-                <Receipt className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="hidden sm:inline tracking-wide">Punto de Venta</span>
-                <span className="sm:hidden tracking-tight">Venta</span>
-                {items.length > 0 && (
-                  <span className={`text-[9px] sm:text-[10px] font-mono font-black px-1.5 py-0.2 rounded-full ${
-                    vista === 'facturador' && !vistaImpresion
-                      ? 'bg-white text-red-700'
-                      : 'bg-red-500 text-white'
-                  }`}>
-                    {items.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setVista('admin'); setVistaImpresion(null); }}
-                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 min-h-[34px] sm:min-h-[38px] cursor-pointer ${
-                  vista === 'admin' && !vistaImpresion
-                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-900/40 scale-[1.02]'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/[0.04]'
-                }`}
-                title="Administración de Inventario"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="hidden sm:inline tracking-wide">Administración</span>
-                <span className="sm:hidden tracking-tight">Admin</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setVista('historial'); setVistaImpresion(null); }}
-                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 min-h-[34px] sm:min-h-[38px] cursor-pointer ${
-                  vista === 'historial' && !vistaImpresion
-                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-900/40 scale-[1.02]'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/[0.04]'
-                }`}
-                title="Historial de Ventas"
-              >
-                <History className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="hidden sm:inline tracking-wide">Historial</span>
-                <span className="sm:hidden tracking-tight">Hist.</span>
-              </button>
-            </div>
-
-            {/* Selector de Modo Claro / Modo Oscuro */}
-            <button
-              type="button"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={theme === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
-              className={`inline-flex items-center justify-center p-1.5 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl text-xs font-bold transition-all duration-200 border min-h-[34px] sm:min-h-[38px] min-w-[34px] sm:min-w-[38px] cursor-pointer shadow-sm active:scale-95 ${
-                theme === 'dark'
-                  ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
-                  : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'
-              }`}
-            >
-              {theme === 'dark' ? (
-                <>
-                  <Sun className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                  <span className="hidden md:inline font-bold ml-1.5">Claro</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-4 h-4 text-slate-700 flex-shrink-0" />
-                  <span className="hidden md:inline font-bold ml-1.5">Oscuro</span>
-                </>
-              )}
-            </button>
-
-            {/* Divisor Desktop */}
-            <div className="hidden lg:block h-6 w-px bg-slate-200 dark:bg-white/[0.08]" />
-
-            {/* Identificador de Vendedor en Desktop */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-[#06080F]/80 border border-slate-200 dark:border-white/[0.08] rounded-2xl shadow-inner">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-xs font-mono text-slate-700 dark:text-slate-300 truncate max-w-[130px]">
-                {session?.user?.email || 'Vendedor'}
-              </span>
-            </div>
-
-            {/* Botón de Cerrar Sesión Responsivo */}
-            <button
-              onClick={() => supabase.auth.signOut()}
-              title="Cerrar Sesión del Sistema"
-              className="inline-flex items-center justify-center gap-1.5 p-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-black bg-rose-50 hover:bg-rose-600 dark:bg-rose-500/15 dark:hover:bg-rose-600 text-rose-700 hover:text-white dark:text-rose-300 dark:hover:text-white border border-rose-300/80 dark:border-rose-500/30 shadow-sm transition-all duration-200 active:scale-95 min-h-[34px] sm:min-h-[38px] min-w-[34px] cursor-pointer flex-shrink-0"
-            >
-              <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-rose-600 dark:text-rose-400 group-hover:text-white" />
-              <span className="hidden sm:inline text-xs font-extrabold tracking-wide">Salir</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <AppLayout
+      vista={vista}
+      setVista={setVista}
+      tasaBCV={tasaBCV}
+      setTasaBCV={setTasaBCV}
+      cargandoBCV={cargandoBCV}
+      onActualizarBCV={cargarTasaBCV}
+      proximoCorrelativo={proximoCorrelativo}
+      itemsCarrito={items}
+      session={session}
+      onCerrarSesion={() => supabase.auth.signOut()}
+      theme={theme}
+      setTheme={setTheme}
+      parseVenezuelanNumber={parseVenezuelanNumber}
+    >
       {/* Notificación de Éxito Flotante */}
       {successNotif && (
-        <div className="no-print fixed bottom-6 right-6 z-50 bg-emerald-950/90 dark:bg-[#0B1A14]/90 border border-emerald-500/50 backdrop-blur-xl text-emerald-300 px-5 py-3.5 rounded-2xl shadow-2xl shadow-emerald-950/60 flex items-center gap-3 text-sm font-semibold animate-slide-up max-w-[90vw]">
+        <div className="no-print fixed bottom-16 sm:bottom-6 right-6 z-50 bg-emerald-950/90 dark:bg-[#0B1A14]/90 border border-emerald-500/50 backdrop-blur-xl text-emerald-300 px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 text-sm font-semibold animate-slide-up max-w-[90vw]">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
           <span className="truncate">{successNotif}</span>
         </div>
       )}
 
-      {/* Contenedor Principal Adaptativo Edge-to-Edge */}
-      <main className="w-full max-w-[98vw] mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-5">
-        {vistaImpresion ? (
-          /* Modo Vista Previa y Descarga de Guía */
-          <div className="space-y-4 sm:space-y-6">
-            <div className="no-print glass-card rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xl">
+      {vistaImpresion ? (
+        /* Modo Vista Previa y Descarga de Guía */
+        <div className="space-y-4 sm:space-y-6">
+          <div className="no-print bg-white dark:bg-[#0B0F19]/90 border border-slate-200/80 dark:border-white/[0.08] rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm">
+            <button
+              onClick={() => setVistaImpresion(null)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Volver al Punto de Venta</span>
+            </button>
+
+            <div className="flex items-center gap-2 justify-end">
               <button
-                onClick={() => setVistaImpresion(null)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors min-h-[40px] cursor-pointer"
+                onClick={() => exportarConHtml2Pdf(vistaImpresion.codigoGuia)}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] border border-slate-300 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Volver</span>
+                <Download className="w-4 h-4" />
+                <span>Descargar PDF</span>
               </button>
 
-              <div className="flex items-center gap-2 justify-end">
-                <button
-                  onClick={() => exportarConHtml2Pdf(vistaImpresion.codigoGuia)}
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold transition-all shadow-sm min-h-[40px] cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Descargar PDF</span>
-                </button>
-
-                <button
-                  onClick={() => window.print()}
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 btn-gradient-red text-white rounded-xl text-xs font-bold shadow-lg shadow-red-950/40 transition-all active:scale-95 min-h-[40px] cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Imprimir</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Vista Renderizada que captura html2pdf con scroll táctil en móviles */}
-            <div className="bg-slate-200/60 dark:bg-slate-900/60 p-2 sm:p-6 lg:p-8 rounded-3xl border border-slate-300 dark:border-slate-800 overflow-x-auto print:bg-white print:p-0 print:border-none print:overflow-visible">
-              <div className="min-w-[650px] sm:min-w-0">
-                <GuiaImprimible {...vistaImpresion} />
-              </div>
+              <button
+                onClick={() => window.print()}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 btn-gradient-red text-white rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimir</span>
+              </button>
             </div>
           </div>
-        ) : vista === 'historial' ? (
-          /* Modo Historial de Guías Completo con Paginación */
-          <HistorialPage
-            onVolverAlFacturador={() => {
-              setVista('facturador');
-              consultarProximoCorrelativo();
-            }}
-            onVerGuia={handleSelectHistorial}
-          />
-        ) : vista === 'admin' ? (
-          /* Modo Panel Administrativo (Dueño) */
-          <AdminDashboard
-            tasaBCV={tasaBCV}
-            onVolverAlMostrador={() => {
-              setVista('facturador');
-              consultarProximoCorrelativo();
-            }}
-          />
-        ) : (
-          /* Modo Punto de Venta de Mostrador */
-          <FacturadorForm
-            cliente={cliente}
-            setCliente={setCliente}
-            items={items}
-            setItems={setItems}
-            tasaBCV={tasaBCV}
-            setTasaBCV={setTasaBCV}
-            bcvInfo={bcvInfo}
-            onActualizarBCV={cargarTasaBCV}
-            cargandoBCV={cargandoBCV}
-            observaciones={observaciones}
-            setObservaciones={setObservaciones}
-            condicionPago={condicionPago}
-            setCondicionPago={setCondicionPago}
-            formaPago={formaPago}
-            setFormaPago={setFormaPago}
-            monedaIngreso={monedaIngreso}
-            setMonedaIngreso={setMonedaIngreso}
-            proximoCorrelativo={proximoCorrelativo}
-            numeroFacturaManual={numeroFacturaManual}
-            tipoDocumento={tipoDocumento}
-            setTipoDocumento={setTipoDocumento}
-            totals={totals}
-            onGuardar={handleGuardar}
-            onImprimir={handleEmitirEImprimir}
-            onLimpiar={handleLimpiar}
-            loading={loading}
-            error={error}
-          />
-        )}
-      </main>
-    </div>
+
+          {/* Vista Renderizada que captura html2pdf */}
+          <div className="bg-slate-200/60 dark:bg-slate-900/60 p-2 sm:p-6 lg:p-8 rounded-3xl border border-slate-300 dark:border-slate-800 overflow-x-auto print:bg-white print:p-0 print:border-none print:overflow-visible">
+            <div className="min-w-[650px] sm:min-w-0">
+              <GuiaImprimible {...vistaImpresion} />
+            </div>
+          </div>
+        </div>
+      ) : vista === 'historial' ? (
+        /* Modo Historial de Guías Completo con Paginación */
+        <HistorialPage
+          onVolverAlFacturador={() => {
+            setVista('facturador');
+            consultarProximoCorrelativo();
+          }}
+          onVerGuia={handleSelectHistorial}
+        />
+      ) : vista === 'admin' ? (
+        /* Modo Panel Administrativo (Dueño) */
+        <AdminDashboard
+          tasaBCV={tasaBCV}
+          onVolverAlMostrador={() => {
+            setVista('facturador');
+            consultarProximoCorrelativo();
+          }}
+        />
+      ) : (
+        /* Modo Punto de Venta Rediseñado Dividido */
+        <POSWorkspace
+          cliente={cliente}
+          setCliente={setCliente}
+          items={items}
+          setItems={setItems}
+          tasaBCV={tasaBCV}
+          formaPago={formaPago}
+          setFormaPago={setFormaPago}
+          condicionPago={condicionPago}
+          setCondicionPago={setCondicionPago}
+          monedaIngreso={monedaIngreso}
+          setMonedaIngreso={setMonedaIngreso}
+          tipoDocumento={tipoDocumento}
+          setTipoDocumento={setTipoDocumento}
+          totals={totals}
+          onGuardar={handleGuardar}
+          onImprimir={handleEmitirEImprimir}
+          onLimpiar={handleLimpiar}
+          loading={loading}
+          error={error}
+        />
+      )}
+    </AppLayout>
   );
 }
