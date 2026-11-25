@@ -319,7 +319,7 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia, onGuiaE
           </div>
         ) : (
           <>
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-[#090d16] border-b border-slate-200 dark:border-white/[0.08] text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
@@ -419,8 +419,8 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia, onGuiaE
               </table>
             </div>
 
-            {/* Tarjetas Móvil */}
-            <div className="md:hidden p-3 space-y-3">
+            {/* Tarjetas Teléfono (1 col) y Tablet (2 cols) */}
+            <div className="lg:hidden p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
               {guiasPaginadas.map((guia) => {
                 const numDoc =
                   (guia.codigo_guia || '').replace(/^GD-/, '') ||

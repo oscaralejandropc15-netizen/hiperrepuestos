@@ -78,7 +78,7 @@ export default function RepuestoModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-[#0e1422] border-0 sm:border border-slate-200 dark:border-white/10 rounded-none sm:rounded-2xl w-full sm:w-[96vw] max-w-4xl h-full sm:h-[92vh] max-h-full sm:max-h-[800px] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
+        className="bg-white dark:bg-[#0e1422] border-0 sm:border border-slate-200 dark:border-white/10 rounded-none sm:rounded-2xl w-full sm:w-[96vw] max-w-4xl h-[100dvh] sm:h-[92vh] max-h-full sm:max-h-[800px] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
       >
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#090d16] shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -124,22 +124,20 @@ export default function RepuestoModal({
                   key={paso.id}
                   type="button"
                   onClick={() => saltarAPasoModal(paso.id)}
-                  className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2.5 p-2 rounded-xl text-center sm:text-left transition-all cursor-pointer border ${
-                    esActivo
-                      ? 'bg-red-50/80 dark:bg-red-500/15 border-red-300 dark:border-red-500/35'
-                      : esCompletado
+                  className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2.5 p-2 rounded-xl text-center sm:text-left transition-all cursor-pointer border ${esActivo
+                    ? 'bg-red-50/80 dark:bg-red-500/15 border-red-300 dark:border-red-500/35'
+                    : esCompletado
                       ? 'bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08]'
                       : 'border-transparent opacity-60 hover:opacity-90'
-                  }`}
+                    }`}
                 >
                   <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${
-                      esCompletado
-                        ? 'bg-emerald-600 text-white'
-                        : esActivo
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${esCompletado
+                      ? 'bg-emerald-600 text-white'
+                      : esActivo
                         ? 'bg-red-600 text-white'
                         : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-                    }`}
+                      }`}
                   >
                     {esCompletado ? <Check className="w-3.5 h-3.5" /> : <IconoPaso className="w-3.5 h-3.5" />}
                   </div>
@@ -148,11 +146,10 @@ export default function RepuestoModal({
                   </span>
                   <div className="min-w-0 hidden sm:block">
                     <span
-                      className={`text-xs font-semibold block truncate ${
-                        esActivo
-                          ? 'text-red-700 dark:text-red-300'
-                          : 'text-slate-800 dark:text-slate-200'
-                      }`}
+                      className={`text-xs font-semibold block truncate ${esActivo
+                        ? 'text-red-700 dark:text-red-300'
+                        : 'text-slate-800 dark:text-slate-200'
+                        }`}
                     >
                       {paso.label}
                     </span>
@@ -420,11 +417,10 @@ export default function RepuestoModal({
                           if (e.dataTransfer.files?.[0]) procesarArchivoImagen(e.dataTransfer.files[0]);
                         }}
                         onClick={() => fileInputFotoRef.current?.click()}
-                        className={`w-44 h-44 sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-dashed transition-all p-2 flex items-center justify-center relative group bg-slate-50 dark:bg-[#090d16] cursor-pointer ${
-                          isDraggingFoto
-                            ? 'border-red-500 bg-red-50 dark:bg-red-500/10'
-                            : 'border-slate-300 dark:border-white/15 hover:border-red-500'
-                        }`}
+                        className={`w-44 h-44 sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-dashed transition-all p-2 flex items-center justify-center relative group bg-slate-50 dark:bg-[#090d16] cursor-pointer ${isDraggingFoto
+                          ? 'border-red-500 bg-red-50 dark:bg-red-500/10'
+                          : 'border-slate-300 dark:border-white/15 hover:border-red-500'
+                          }`}
                       >
                         {fotoActualMostrada ? (
                           <img
@@ -508,11 +504,10 @@ export default function RepuestoModal({
                               setFormRepuesto((prev) => ({ ...prev, imagen_url: preset.url }));
                               mostrarNotificacion(`Foto asignada: ${preset.label}`, 'success');
                             }}
-                            className={`h-9 px-2.5 rounded-xl text-xs font-medium flex items-center gap-2 border cursor-pointer ${
-                              formRepuesto.imagen_url === preset.url
-                                ? 'bg-red-50 dark:bg-red-500/15 border-red-500 text-red-700 dark:text-red-300'
-                                : 'bg-slate-50 dark:bg-[#090d16] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300'
-                            }`}
+                            className={`h-9 px-2.5 rounded-xl text-xs font-medium flex items-center gap-2 border cursor-pointer ${formRepuesto.imagen_url === preset.url
+                              ? 'bg-red-50 dark:bg-red-500/15 border-red-500 text-red-700 dark:text-red-300'
+                              : 'bg-slate-50 dark:bg-[#090d16] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300'
+                              }`}
                           >
                             <img src={preset.url} alt="" className="w-5 h-5 object-contain rounded" />
                             <span className="truncate">{preset.label}</span>
@@ -540,12 +535,11 @@ export default function RepuestoModal({
                             key={mVal}
                             type="button"
                             onClick={() => handleMargenChange(String(mVal))}
-                            className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-semibold cursor-pointer ${
-                              String(formRepuesto.margen_detal) === String(mVal) &&
+                            className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-semibold cursor-pointer ${String(formRepuesto.margen_detal) === String(mVal) &&
                               parseFloat(formRepuesto.costo_usd) > 0
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                            }`}
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                              }`}
                           >
                             +{mVal}%
                           </button>
@@ -749,8 +743,8 @@ export default function RepuestoModal({
                     {guardandoRepuesto
                       ? 'Guardando...'
                       : repuestoEditandoId
-                      ? 'Guardar cambios'
-                      : 'Registrar repuesto'}
+                        ? 'Guardar cambios'
+                        : 'Registrar repuesto'}
                   </span>
                 </button>
               )}

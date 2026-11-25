@@ -912,8 +912,8 @@ export default function POSWorkspace({
                   limpiarBusquedaCatalogo();
                 }
               }}
-              placeholder="Buscar repuesto por código, OEM, descripción o vehículo (ej. pastilla, corolla)..."
-              className="input-field h-11 pl-10 pr-28 font-medium"
+              placeholder="Buscar código, descripción o vehículo..."
+              className="input-field h-11 pl-10 pr-20 sm:pr-28 font-medium"
             />
             <div className="absolute right-1.5 flex items-center gap-1">
               {hayFiltrosActivos && (
@@ -1365,9 +1365,9 @@ export default function POSWorkspace({
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
           {/* Izquierda: tipo de comprobante, modalidad de cobro y notas */}
-          <div className="md:col-span-7 space-y-3.5 flex flex-col justify-between">
+          <div className="lg:col-span-7 space-y-3.5 flex flex-col justify-between">
             <div className="space-y-3.5">
               <div>
                 <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -1480,7 +1480,7 @@ export default function POSWorkspace({
           </div>
 
           {/* Derecha: Bloque ejecutivo oscuro de totales y emisión */}
-          <div className="md:col-span-5 rounded-2xl bg-[#0f172a] dark:bg-[#090d16] text-white p-4 sm:p-5 border border-slate-800 dark:border-white/10 flex flex-col justify-between gap-4">
+          <div className="lg:col-span-5 rounded-2xl bg-[#0f172a] dark:bg-[#090d16] text-white p-4 sm:p-5 border border-slate-800 dark:border-white/10 flex flex-col justify-between gap-4">
             <div className="space-y-2 pb-3 border-b border-white/10 text-xs tabular-nums">
               <div className="flex justify-between text-slate-300">
                 <span>{formaPago === 'EFECTIVO' ? 'Subtotal (0% IVA)' : 'Subtotal Neto'}</span>
@@ -1601,10 +1601,10 @@ export default function POSWorkspace({
       </section>
 
       {items.length > 0 && (
-        <div className="md:hidden fixed bottom-20 left-4 z-30">
+        <div className="lg:hidden fixed bottom-[72px] left-3 z-30">
           <a
             href="#pos-checkout"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900 dark:bg-red-600 text-white text-xs font-semibold shadow-xl border border-white/15 tabular-nums"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900 dark:bg-red-600 text-white text-xs font-semibold shadow-xl border border-white/15 tabular-nums"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             <span>Cobrar ({totalItemsEnCarrito})</span>

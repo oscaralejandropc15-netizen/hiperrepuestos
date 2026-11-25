@@ -172,7 +172,7 @@ export default function InventarioTab({
           </div>
         ) : (
           <>
-            <div className="hidden md:block overflow-x-auto max-h-[620px] overflow-y-auto">
+            <div className="hidden lg:block overflow-x-auto max-h-[620px] overflow-y-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-slate-50 dark:bg-[#090d16] border-b border-slate-200 dark:border-white/[0.08] sticky top-0 z-10 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   <tr>
@@ -318,8 +318,8 @@ export default function InventarioTab({
               </table>
             </div>
 
-            {/* Tarjetas Móvil */}
-            <div className="md:hidden p-3 space-y-3">
+            {/* Tarjetas Teléfono (1 col) y Tablet (2 cols) */}
+            <div className="lg:hidden p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
               {productosPaginados.length > 0 ? (
                 productosPaginados.map((p) => {
                   const baseUSD = parseFloat(p.precio_detal_usd) || 0;
@@ -420,7 +420,7 @@ export default function InventarioTab({
                   );
                 })
               ) : (
-                <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
+                <div className="md:col-span-2 p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
                   No se encontraron repuestos con los filtros seleccionados.
                 </div>
               )}

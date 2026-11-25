@@ -701,8 +701,8 @@ export default function ModuloIngresoMercancia({
                 </div>
               </div>
 
-              <div className="max-h-96 overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10">
-                <table className="w-full text-left text-xs border-collapse">
+              <div className="max-h-96 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10">
+                <table className="w-full min-w-[540px] text-left text-xs border-collapse">
                   <thead className="bg-slate-50 dark:bg-[#090d16] text-[11px] font-semibold uppercase text-slate-500 sticky top-0">
                     <tr>
                       <th className="py-2.5 px-3">Fecha</th>
@@ -779,8 +779,8 @@ export default function ModuloIngresoMercancia({
                 </button>
               </div>
 
-              <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10">
-                <table className="w-full text-left text-xs border-collapse">
+              <div className="max-h-72 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10">
+                <table className="w-full min-w-[520px] text-left text-xs border-collapse">
                   <thead className="bg-slate-50 dark:bg-[#090d16] text-[11px] font-semibold uppercase text-slate-500 sticky top-0">
                     <tr>
                       <th className="py-2 px-3">Código</th>
@@ -1150,7 +1150,7 @@ function FilaRenglon({
             )}
 
             {dropdownAbierto && (
-              <div className="absolute left-0 right-0 sm:w-[560px] max-w-[92vw] top-full mt-1.5 bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-2xl shadow-2xl z-[999] max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06] animate-fade-in">
+              <div className="absolute left-0 right-0 sm:right-auto sm:w-[560px] max-w-[calc(100vw-2.5rem)] top-full mt-1.5 bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-2xl shadow-2xl z-[999] max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06] animate-fade-in">
                 <div className="px-3.5 py-2 bg-slate-50 dark:bg-[#090d16] text-[11px] font-semibold text-slate-500 flex items-center justify-between">
                   <span>Resultados ({productosFiltrados.length})</span>
                   <span>Selecciona un repuesto</span>

@@ -571,7 +571,7 @@ export default function App() {
 
   if (!session) {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-[#070a11]" />}>
+      <Suspense fallback={<div className="min-h-screen bg-[#f1f5f9] dark:bg-[#070a11]" />}>
         <AuthGate onAuthSuccess={(s) => setSession(s)} />
       </Suspense>
     );

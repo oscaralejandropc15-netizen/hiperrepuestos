@@ -88,11 +88,10 @@ export default function PaginationBar({
                   key={num}
                   type="button"
                   onClick={() => onChangePagina(num)}
-                  className={`min-w-[36px] h-9 px-2 rounded-xl font-mono font-bold transition-colors cursor-pointer ${
-                    num === paginaActual
-                      ? 'bg-red-600 text-white shadow-sm'
-                      : 'border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
-                  }`}
+                  className={`min-w-[36px] h-9 px-2 rounded-xl font-mono font-bold transition-colors cursor-pointer ${num === paginaActual
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+                    }`}
                 >
                   {num}
                 </button>
@@ -123,9 +122,9 @@ export default function PaginationBar({
       </div>
 
       {onChangeItemsPorPagina && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <span className="text-slate-500 dark:text-slate-400">Por página:</span>
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#090d16] p-1 rounded-xl border border-slate-200 dark:border-white/10">
+          <div className="flex flex-wrap items-center justify-center gap-1 bg-slate-100 dark:bg-[#090d16] p-1 rounded-xl border border-slate-200 dark:border-white/10">
             {opcionesItemsPorPagina.map((opcion) => {
               const activa = itemsPorPagina === opcion;
               return (
@@ -136,11 +135,10 @@ export default function PaginationBar({
                     onChangeItemsPorPagina(opcion);
                     onChangePagina(1);
                   }}
-                  className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold transition-colors cursor-pointer ${
-                    activa
-                      ? 'bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold transition-colors cursor-pointer ${activa
+                    ? 'bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
                 >
                   {opcion === 'todos' ? 'Todos' : opcion}
                 </button>

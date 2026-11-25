@@ -72,7 +72,7 @@ export default function CuentasCobrarTab({
           </div>
         ) : (
           <>
-            <div className="hidden md:block overflow-x-auto max-h-[600px] overflow-y-auto">
+            <div className="hidden lg:block overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-slate-50 dark:bg-[#090d16] border-b border-slate-200 dark:border-white/[0.08] sticky top-0 z-10 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   <tr>
@@ -147,8 +147,8 @@ export default function CuentasCobrarTab({
               </table>
             </div>
 
-            {/* Cards para móvil */}
-            <div className="md:hidden p-3 space-y-3">
+            {/* Cards para Teléfono (1 col) y Tablet (2 cols) */}
+            <div className="lg:hidden p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
               {cuentasCobrar.map((c) => {
                 const saldo = parseFloat(c.saldo_pendiente_usd) || 0;
                 const esPagado = c.estado === 'pagado' || saldo <= 0.01;
