@@ -1,22 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ShoppingBag, 
-  Package, 
-  History, 
-  LogOut, 
-  Sun, 
-  Moon, 
-  RotateCcw, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Sparkles,
+import {
+  ShoppingBag,
+  Package,
+  History,
+  LogOut,
+  Sun,
+  Moon,
+  RotateCcw,
   ChevronRight,
-  Menu,
-  X,
-  CreditCard,
-  DollarSign,
-  TrendingUp,
-  Receipt
+  Receipt,
 } from 'lucide-react';
 
 export default function AppLayout({
@@ -33,27 +25,31 @@ export default function AppLayout({
   onCerrarSesion,
   theme,
   setTheme,
-  parseVenezuelanNumber
+  parseVenezuelanNumber,
 }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [horaActual, setHoraActual] = useState('');
 
-  // Reloj en tiempo real estilo Montano
   useEffect(() => {
     const actualizarHora = () => {
       const ahora = new Date();
-      const opcionesHora = { hour: '2-digit', minute: '2-digit', hour12: true };
-      const opcionesDia = { weekday: 'short', day: 'numeric', month: 'short' };
-      const hora = ahora.toLocaleTimeString('es-VE', opcionesHora).toUpperCase();
-      const dia = ahora.toLocaleDateString('es-VE', opcionesDia);
-      setHoraActual(`${hora} • ${dia}`);
+      const hora = ahora.toLocaleTimeString('es-VE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+      const dia = ahora.toLocaleDateString('es-VE', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      });
+      setHoraActual(`${hora} · ${dia}`);
     };
     actualizarHora();
-    const interval = setInterval(actualizarHora, 1000 * 30);
+    const interval = setInterval(actualizarHora, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const totalItems = itemsCarrito.reduce((acc, it) => acc + (it.cantidad || 1), 0);
+  const totalItems = itemsCarrito.reduce((acc, it) => acc + (parseFloat(it.cantidad) || 1), 0);
 
   const navItems = [
     {
@@ -62,68 +58,63 @@ export default function AppLayout({
       mobileLabel: 'Venta',
       icon: ShoppingBag,
       badge: totalItems > 0 ? totalItems : null,
-      desc: 'Facturación y Guías'
+      desc: 'Mostrador y facturación',
     },
     {
       id: 'admin',
-      label: 'Inventario',
-      mobileLabel: 'Stock',
+      label: 'Inventario y Gestión',
+      mobileLabel: 'Inventario',
       icon: Package,
-      desc: 'Catálogo de Repuestos'
+      desc: 'Catálogo, compras y CxC',
     },
     {
       id: 'historial',
       label: 'Historial',
-      mobileLabel: 'Ventas',
+      mobileLabel: 'Historial',
       icon: History,
-      desc: 'Documentos Emitidos'
-    }
+      desc: 'Comprobantes emitidos',
+    },
   ];
 
-  const handleNavClick = (id) => {
-    setVista(id);
-    setMobileMenuOpen(false);
-  };
+  const vistaMeta = {
+    facturador: { title: 'Punto de Venta', subtitle: 'Facturación rápida en mostrador' },
+    admin: { title: 'Inventario y Gestión', subtitle: 'Repuestos, compras y cuentas por cobrar' },
+    historial: { title: 'Historial de Ventas', subtitle: 'Consulta y reimpresión de documentos' },
+  }[vista] || { title: 'Punto de Venta', subtitle: '' };
+
+  const userName = session?.user?.email?.split('@')[0] || 'Vendedor';
+  const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-dot-grid flex flex-col lg:flex-row font-sans text-slate-900 dark:text-slate-100 antialiased selection:bg-red-500 selection:text-white">
-
-      {/* ========================================================================= */}
-      {/* SIDEBAR PERSISTENTE EN COMPUTADORAS (ESTILO MONTANO SYSTEM PRO)          */}
-      {/* ========================================================================= */}
-      <aside className="hidden lg:flex flex-col w-72 shrink-0 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl border-r border-slate-200/80 dark:border-white/[0.07] h-screen sticky top-0 z-40 p-5 justify-between shadow-sm">
-        
-        {/* Cabecera del Sidebar con Logotipo */}
+    <div className="min-h-screen bg-app-canvas flex flex-col lg:flex-row font-sans text-slate-900 dark:text-slate-100 antialiased">
+      {/* Sidebar ejecutivo oscuro con alto contraste */}
+      <aside className="no-print hidden lg:flex flex-col w-64 shrink-0 bg-[#0f172a] text-slate-100 border-r border-slate-800/80 h-screen sticky top-0 z-40 px-4 py-5 justify-between">
         <div className="space-y-6">
-          <div className="flex items-center gap-3 px-2">
-            <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-rose-600 rounded-2xl blur-xs opacity-50"></div>
-              <img
-                src="/logo.png"
-                alt="Logo Familycar"
-                className="relative w-11 h-11 object-contain rounded-2xl bg-white dark:bg-slate-950 p-1 border border-slate-200 dark:border-white/10 shadow-md"
-              />
-            </div>
-            <div>
+          {/* Marca */}
+          <div className="flex items-center gap-3 px-1.5">
+            <img
+              src="/logo.png"
+              alt="Logo Familycar"
+              className="w-10 h-10 object-contain rounded-full bg-black p-0.5 border border-white/15 shadow-sm shrink-0"
+            />
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-heading font-black text-base text-slate-900 dark:text-white tracking-wider">
-                  FAMILYCAR
+                <span className="font-heading font-bold text-base text-white tracking-tight truncate">
+                  Familycar
                 </span>
-                <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white uppercase tracking-wider">
-                  PRO
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-red-600 text-white uppercase tracking-wider">
+                  POS
                 </span>
               </div>
-              <p className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
-                SISTEMA POS & ERP
-              </p>
+              <p className="text-xs text-slate-400 truncate">Hiper Repuestos C.A.</p>
             </div>
           </div>
 
-          {/* Menú de Navegación Vertical */}
-          <nav className="space-y-1.5 pt-2">
-            <div className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-slate-400 px-3 pb-2">
-              Módulos Principales
-            </div>
+          {/* Navegación */}
+          <nav className="space-y-1.5" aria-label="Navegación principal">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-3 pb-1">
+              Menú principal
+            </p>
 
             {navItems.map((item) => {
               const activo = vista === item.id;
@@ -133,35 +124,45 @@ export default function AppLayout({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 cursor-pointer group ${
+                  onClick={() => setVista(item.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all duration-150 cursor-pointer group ${
                     activo
-                      ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 shadow-xs border-l-4 border-red-600'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-white/[0.04]'
+                      ? 'bg-red-600 text-white shadow-brand'
+                      : 'text-slate-300 hover:text-white hover:bg-white/[0.06]'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl transition-colors ${
-                      activo 
-                        ? 'bg-red-600 text-white shadow-md shadow-red-600/30' 
-                        : 'bg-slate-100 dark:bg-white/[0.06] text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white'
-                    }`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                        activo
+                          ? 'bg-white/20 text-white'
+                          : 'bg-white/[0.06] text-slate-400 group-hover:text-white'
+                      }`}
+                    >
                       <Icon className="w-4 h-4" />
                     </div>
-                    <div className="text-left">
-                      <div className="leading-tight">{item.label}</div>
-                      <div className="text-[10px] font-normal text-slate-400 dark:text-slate-500">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold leading-tight truncate">
+                        {item.label}
+                      </div>
+                      <div
+                        className={`text-[11px] truncate mt-0.5 ${
+                          activo ? 'text-red-100' : 'text-slate-400'
+                        }`}
+                      >
                         {item.desc}
                       </div>
                     </div>
                   </div>
 
                   {item.badge ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-red-600 text-white shadow-xs">
+                    <span
+                      className={`ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold tabular-nums shrink-0 ${
+                        activo ? 'bg-white text-red-700' : 'bg-red-600 text-white'
+                      }`}
+                    >
                       {item.badge}
                     </span>
-                  ) : activo ? (
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-600" />
                   ) : null}
                 </button>
               );
@@ -169,172 +170,173 @@ export default function AppLayout({
           </nav>
         </div>
 
-        {/* Pie del Sidebar: Tarjeta del Vendedor y Cierre de Sesión */}
-        <div className="pt-4 border-t border-slate-100 dark:border-white/[0.06] space-y-3">
-          
-          {/* Identificación de la Tienda */}
-          <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#06080F]/60 border border-slate-200/60 dark:border-white/[0.05]">
-            <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">
+        {/* Pie del sidebar */}
+        <div className="pt-4 border-t border-white/10 space-y-3">
+          <div className="px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+            <p className="text-xs font-semibold text-white truncate">
               Hiper Repuestos Familycar
             </p>
-            <p className="text-[10px] font-mono text-slate-400">
-              RIF: J-412654489 • Charallave
+            <p className="text-[11px] text-slate-400 mt-0.5 tabular-nums">
+              RIF: J-412654489 · Charallave
             </p>
           </div>
 
-          {/* Perfil del Usuario Vendedor */}
-          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-white dark:bg-[#06080F] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm">
-                V
+              <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
+                {userInitial}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="text-[10px] font-mono font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                    En línea
-                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="text-[11px] font-medium text-emerald-400">En línea</span>
                 </div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[120px]">
-                  {session?.user?.email?.split('@')[0] || 'Vendedor'}
-                </p>
+                <p className="text-xs font-semibold text-white truncate">{userName}</p>
               </div>
             </div>
 
             <button
               type="button"
               onClick={onCerrarSesion}
-              title="Cerrar Sesión"
-              className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+              className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-rose-400 rounded-lg hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
-
       </aside>
 
-      {/* ========================================================================= */}
-      {/* CONTENIDO PRINCIPAL + BARRA SUPERIOR EJECUTIVA (TOPBAR)                  */}
-      {/* ========================================================================= */}
+      {/* Contenedor principal */}
       <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-8">
-
-        {/* TOPBAR ELEGANTE ESTILO MONTANO */}
-        <header className="sticky top-0 z-30 bg-white/95 dark:bg-[#0B0F19]/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/[0.08] px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 shadow-xs">
-          
-          {/* Lado Izquierdo: Ruta actual / Logotipo en móvil */}
-          <div className="flex items-center gap-3">
-            
-            {/* Logo en Móvil */}
-            <div className="flex items-center gap-2 lg:hidden">
+        {/* Topbar */}
+        <header className="no-print sticky top-0 z-30 h-16 bg-white/95 dark:bg-[#0e1422]/95 backdrop-blur-md border-b border-slate-200/90 dark:border-white/[0.08] px-3 sm:px-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 lg:hidden min-w-0">
               <img
                 src="/logo.png"
                 alt="Familycar"
-                className="w-8 h-8 rounded-xl object-contain border border-slate-200 dark:border-white/10"
+                className="w-8 h-8 rounded-full object-contain bg-black p-0.5 border border-slate-200 dark:border-white/10 shrink-0"
               />
-              <span className="font-heading font-black text-sm text-slate-900 dark:text-white">
-                FAMILYCAR
-              </span>
+              <div className="min-w-0">
+                <span className="font-heading font-bold text-sm text-slate-900 dark:text-white block leading-none truncate">
+                  Familycar
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate mt-0.5">
+                  {vistaMeta.title}
+                </span>
+              </div>
             </div>
 
-            {/* Breadcrumb Ejecutivo en Desktop */}
-            <div className="hidden lg:flex items-center gap-2 text-xs font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400">
-              <span className="text-red-600 font-extrabold">|</span>
-              <span>PANEL DE ADMINISTRACIÓN</span>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-slate-800 dark:text-white font-extrabold">
-                {vista === 'facturador' ? 'PUNTO DE VENTA' : vista === 'admin' ? 'INVENTARIO' : 'HISTORIAL DE VENTAS'}
+            <div className="hidden lg:flex items-center gap-2 text-sm min-w-0">
+              <span className="font-heading font-bold text-slate-900 dark:text-white truncate">
+                {vistaMeta.title}
               </span>
+              {vistaMeta.subtitle && (
+                <>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="hidden xl:inline text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {vistaMeta.subtitle}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Lado Derecho: Reloj en tiempo real, Tasa BCV Oficial, Status y Tema */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            
-            {/* Reloj y Estado "En línea" (Estilo Montano) */}
-            <div className="hidden md:flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {horaActual && (
+              <span className="hidden xl:inline-block text-xs font-medium text-slate-500 dark:text-slate-400 tabular-nums mr-1">
                 {horaActual}
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                En línea
-              </span>
-            </div>
+            )}
 
-            {/* Widget Tasa Oficial BCV con 2 decimales */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 dark:bg-[#06080F] border border-slate-300/80 dark:border-white/10 rounded-xl shadow-inner">
+            {/* Tasa BCV */}
+            <div className="flex items-center gap-1.5 px-3 h-10 bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/25 rounded-xl">
               <img src="/bcv_logo.svg" alt="BCV" className="w-4 h-4 object-contain shrink-0" />
-              <div className="flex items-center">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={tasaBCV}
-                  onChange={(e) => setTasaBCV(e.target.value)}
-                  onBlur={() => {
-                    if (tasaBCV && parseVenezuelanNumber) {
-                      const n = parseVenezuelanNumber(tasaBCV);
-                      if (!isNaN(n) && n > 0) setTasaBCV(n.toFixed(2));
-                    }
-                  }}
-                  className="w-16 sm:w-20 bg-transparent text-right font-mono font-black text-xs text-emerald-600 dark:text-emerald-400 focus:outline-none"
-                  title="Tasa oficial BCV (editable a 2 decimales)"
-                />
-                <span className="text-[10px] font-mono font-bold text-slate-400 ml-1">
-                  Bs.
-                </span>
-              </div>
+              <label htmlFor="topbar-bcv-rate" className="sr-only">
+                Tasa oficial BCV
+              </label>
+              <input
+                id="topbar-bcv-rate"
+                type="number"
+                step="0.01"
+                value={tasaBCV}
+                onChange={(e) => setTasaBCV(e.target.value)}
+                onBlur={() => {
+                  if (tasaBCV && parseVenezuelanNumber) {
+                    const n = parseVenezuelanNumber(tasaBCV);
+                    if (!isNaN(n) && n > 0) setTasaBCV(n.toFixed(2));
+                  }
+                }}
+                className="w-16 sm:w-20 bg-transparent text-right font-bold tabular-nums text-sm text-emerald-800 dark:text-emerald-300 focus:outline-none"
+                title="Tasa oficial BCV (editable)"
+              />
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                Bs.
+              </span>
               {onActualizarBCV && (
                 <button
                   type="button"
-                  onClick={onActualizarBCV}
+                  onClick={() => onActualizarBCV(true)}
                   disabled={cargandoBCV}
-                  className="p-0.5 text-slate-400 hover:text-emerald-500 transition-colors cursor-pointer"
-                  title="Actualizar tasa BCV oficial del día"
+                  aria-label="Actualizar tasa BCV"
+                  title="Actualizar tasa BCV oficial"
+                  className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded-md transition-colors cursor-pointer"
                 >
-                  <RotateCcw className={`w-3 h-3 ${cargandoBCV ? 'animate-spin text-emerald-500' : ''}`} />
+                  <RotateCcw className={`w-3.5 h-3.5 ${cargandoBCV ? 'animate-spin' : ''}`} />
                 </button>
               )}
             </div>
 
-            {/* Correlativo de Factura / Venta */}
-            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-[#06080F] border border-slate-300/80 dark:border-white/10 rounded-xl text-xs font-mono font-bold">
-              <span className="text-slate-400 text-[10px]">Nº:</span>
-              <span className="text-red-600 dark:text-red-400 font-extrabold">{proximoCorrelativo}</span>
+            {/* Próximo correlativo */}
+            <div
+              className="hidden sm:flex items-center gap-1.5 px-3 h-10 bg-slate-100 dark:bg-[#090d16] border border-slate-200 dark:border-white/[0.1] rounded-xl text-xs tabular-nums"
+              title="Próximo número de comprobante"
+            >
+              <Receipt className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Nº</span>
+              <span className="text-red-600 dark:text-red-400 font-bold">{proximoCorrelativo}</span>
             </div>
 
-            {/* Botón Cambio de Tema Claro / Oscuro */}
+            {/* Tema */}
             <button
               type="button"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300/80 dark:border-white/10 transition-colors cursor-pointer shadow-xs"
-              title={theme === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
+              aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] transition-colors cursor-pointer"
             >
-              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-700" />}
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-700" />
+              )}
             </button>
 
-            {/* Botón Salir en Móvil */}
+            {/* Salir móvil */}
             <button
               type="button"
               onClick={onCerrarSesion}
-              className="lg:hidden p-2 rounded-xl text-rose-600 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20"
-              title="Cerrar Sesión"
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 cursor-pointer"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        {/* ÁREA DE CONTENIDO */}
         <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1600px] w-full mx-auto">
           {children}
         </main>
       </div>
 
-      {/* ========================================================================= */}
-      {/* BARRA INFERIOR TÁCTIL EN TELÉFONOS (BOTTOM NAVIGATION BAR)                */}
-      {/* ========================================================================= */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-2xl border-t border-slate-200 dark:border-white/[0.08] px-2 py-1.5 flex items-center justify-around shadow-2xl">
+      {/* Bottom bar móvil */}
+      <nav
+        className="no-print lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0e1422]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/[0.08] px-2 pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] flex items-center justify-around shadow-lg"
+        aria-label="Navegación móvil"
+      >
         {navItems.map((item) => {
           const activo = vista === item.id;
           const Icon = item.icon;
@@ -343,29 +345,29 @@ export default function AppLayout({
             <button
               key={item.id}
               type="button"
-              onClick={() => handleNavClick(item.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all cursor-pointer relative ${
+              onClick={() => setVista(item.id)}
+              className={`relative flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 px-2 rounded-xl transition-colors cursor-pointer ${
                 activo
-                  ? 'text-red-600 dark:text-red-400 font-extrabold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                  ? 'text-red-600 dark:text-red-400 font-semibold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
+              {activo && (
+                <span className="absolute top-0 w-8 h-0.5 rounded-full bg-red-600 dark:bg-red-400" />
+              )}
               <div className="relative">
-                <Icon className={`w-5 h-5 transition-transform ${activo ? 'scale-110' : ''}`} />
+                <Icon className="w-5 h-5" />
                 {item.badge ? (
-                  <span className="absolute -top-1.5 -right-2 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-black bg-red-600 text-white shadow-xs">
+                  <span className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold tabular-nums bg-red-600 text-white">
                     {item.badge}
                   </span>
                 ) : null}
               </div>
-              <span className="text-[10px] mt-0.5 tracking-tight font-heading">
-                {item.mobileLabel}
-              </span>
+              <span className="text-[11px] mt-0.5 leading-tight">{item.mobileLabel}</span>
             </button>
           );
         })}
       </nav>
-
     </div>
   );
 }

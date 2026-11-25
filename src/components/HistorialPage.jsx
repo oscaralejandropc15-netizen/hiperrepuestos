@@ -1,55 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { getHistorialCached, invalidateHistorialCache } from '../lib/queryCache';
 import { formatUSD, formatVES, formatDate } from '../lib/formatters';
-import { 
-  Search, 
-  RotateCcw, 
-  Eye, 
-  Trash2, 
-  Calendar, 
-  ArrowLeft, 
-  ChevronLeft, 
-  ChevronRight, 
-  FileText, 
-  AlertCircle, 
-  CheckCircle2,
+import {
+  Search,
+  RotateCcw,
+  Eye,
+  Trash2,
+  ArrowLeft,
+  AlertCircle,
+  Receipt,
   DollarSign,
   TrendingUp,
-  Filter
+  X,
 } from 'lucide-react';
+import PaginationBar from './ui/PaginationBar';
+import ConfirmModal from './ui/ConfirmModal';
+import ToastNotification from './ui/ToastNotification';
 
-export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
+export default function HistorialPage({ onVolverAlFacturador, onVerGuia, onGuiaEliminada }) {
   const [guias, setGuias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
-  // Filtros
   const [busqueda, setBusqueda] = useState('');
-  const [filtroFecha, setFiltroFecha] = useState('todas'); // 'todas', 'hoy', 'semana', 'mes'
-
-  // Paginación
+  const [filtroFecha, setFiltroFecha] = useState('todas');
   const [paginaActual, setPaginaActual] = useState(1);
   const [porPagina, setPorPagina] = useState(10);
 
-  // Modal de confirmación para eliminar
   const [guiaAEliminar, setGuiaAEliminar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
+  const [limiteCarga, setLimiteCarga] = useState(100);
 
-  // Cargar guías desde Supabase
-  const cargarGuias = async () => {
+  const cargarGuias = async (force = false, nextLimit = limiteCarga) => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from('guias_despacho')
-        .select(`
-          *,
-          items:items_guia(*)
-        `)
-        .order('fecha', { ascending: false });
-
-      if (error) throw error;
+      const data = await getHistorialCached({ force, limit: nextLimit });
       setGuias(data || []);
     } catch (err) {
       console.error(err);
@@ -60,27 +48,22 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
   };
 
   useEffect(() => {
-    cargarGuias();
+    cargarGuias(false, 100);
   }, []);
 
-  // Eliminar guía seleccionada
   const confirmarEliminacion = async () => {
     if (!guiaAEliminar) return;
     setEliminando(true);
     setError(null);
 
     try {
-      // 1. Eliminar primero los ítems asociados en items_guia
       const { error: itemsErr } = await supabase
         .from('items_guia')
         .delete()
         .eq('guia_id', guiaAEliminar.id);
 
-      if (itemsErr) {
-        console.warn('Aviso al eliminar renglones:', itemsErr);
-      }
+      if (itemsErr) console.warn('Aviso al eliminar renglones:', itemsErr);
 
-      // 2. Eliminar la cabecera en guias_despacho y verificar retorno con .select()
       const { data, error: guiaErr } = await supabase
         .from('guias_despacho')
         .delete()
@@ -89,162 +72,202 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
 
       if (guiaErr) throw guiaErr;
 
-      // 3. Si PostgreSQL no devolvió ninguna fila eliminada (bloqueado por políticas RLS)
       if (!data || data.length === 0) {
         throw new Error(
-          'Supabase no eliminó la factura (0 filas afectadas). Esto ocurre porque falta la política RLS de DELETE en Supabase.'
+          'No se pudo eliminar el comprobante (0 filas afectadas). Verifica las políticas RLS de DELETE en Supabase.'
         );
       }
 
-      // 4. Actualizar estado local solo si la base de datos realmente la eliminó
-      setGuias(prev => prev.filter(g => g.id !== guiaAEliminar.id));
-      setSuccessMsg(`La factura ${guiaAEliminar.codigo_guia} fue eliminada permanentemente.`);
+      setGuias((prev) => prev.filter((g) => g.id !== guiaAEliminar.id));
+      invalidateHistorialCache();
+      setSuccessMsg(`Comprobante ${guiaAEliminar.codigo_guia} eliminado correctamente.`);
       setTimeout(() => setSuccessMsg(null), 4000);
       setGuiaAEliminar(null);
+      onGuiaEliminada?.();
     } catch (err) {
       console.error('Error al eliminar factura:', err);
-      setError(err.message || 'No se pudo eliminar la guía. Verifica tus permisos RLS en Supabase.');
+      setError(err.message || 'No se pudo eliminar el comprobante.');
     } finally {
       setEliminando(false);
     }
   };
 
-  // Filtrado de guías en memoria
-  const ahora = new Date();
-  const guiasFiltradas = guias.filter((g) => {
-    // 1. Filtro por texto
+  const guiasFiltradas = useMemo(() => {
+    const ahora = new Date();
     const term = busqueda.toLowerCase().trim();
-    const codigo = (g.codigo_guia || '').toLowerCase();
-    const numero = String(g.numero_guia || '');
-    const numClean = codigo.replace(/^gd-/, '');
-    const cliente = (g.cliente_nombre || '').toLowerCase();
-    const doc = (g.cliente_documento || '').toLowerCase();
-    const coincideTexto = !term || codigo.includes(term) || numero.includes(term) || numClean.includes(term) || cliente.includes(term) || doc.includes(term);
 
-    if (!coincideTexto) return false;
+    return guias.filter((g) => {
+      const codigo = (g.codigo_guia || '').toLowerCase();
+      const numero = String(g.numero_guia || '');
+      const numClean = codigo.replace(/^gd-/, '');
+      const cliente = (g.cliente_nombre || '').toLowerCase();
+      const doc = (g.cliente_documento || '').toLowerCase();
 
-    // 2. Filtro por fecha
-    if (filtroFecha === 'todas') return true;
+      const coincideTexto =
+        !term ||
+        codigo.includes(term) ||
+        numero.includes(term) ||
+        numClean.includes(term) ||
+        cliente.includes(term) ||
+        doc.includes(term);
 
-    const fechaGuia = new Date(g.fecha);
-    if (filtroFecha === 'hoy') {
-      return (
-        fechaGuia.getDate() === ahora.getDate() &&
-        fechaGuia.getMonth() === ahora.getMonth() &&
-        fechaGuia.getFullYear() === ahora.getFullYear()
-      );
-    }
-    if (filtroFecha === 'semana') {
-      const hace7Dias = new Date();
-      hace7Dias.setDate(ahora.getDate() - 7);
-      return fechaGuia >= hace7Dias;
-    }
-    if (filtroFecha === 'mes') {
-      return (
-        fechaGuia.getMonth() === ahora.getMonth() &&
-        fechaGuia.getFullYear() === ahora.getFullYear()
-      );
-    }
+      if (!coincideTexto) return false;
+      if (filtroFecha === 'todas') return true;
 
-    return true;
-  });
+      const fechaGuia = new Date(g.fecha);
+      if (filtroFecha === 'hoy') {
+        return (
+          fechaGuia.getDate() === ahora.getDate() &&
+          fechaGuia.getMonth() === ahora.getMonth() &&
+          fechaGuia.getFullYear() === ahora.getFullYear()
+        );
+      }
+      if (filtroFecha === 'semana') {
+        const hace7Dias = new Date();
+        hace7Dias.setDate(ahora.getDate() - 7);
+        return fechaGuia >= hace7Dias;
+      }
+      if (filtroFecha === 'mes') {
+        return (
+          fechaGuia.getMonth() === ahora.getMonth() &&
+          fechaGuia.getFullYear() === ahora.getFullYear()
+        );
+      }
+      return true;
+    });
+  }, [guias, busqueda, filtroFecha]);
 
-  // Cálculos de Paginación
   const totalGuias = guiasFiltradas.length;
   const totalPaginas = Math.ceil(totalGuias / porPagina) || 1;
   const indexInicio = (paginaActual - 1) * porPagina;
   const guiasPaginadas = guiasFiltradas.slice(indexInicio, indexInicio + porPagina);
 
-  // Métricas rápidas de las guías filtradas
-  const totalMontoUSD = guiasFiltradas.reduce((acc, g) => acc + (parseFloat(g.total_usd) || 0), 0);
+  const totalMontoUSD = guiasFiltradas.reduce(
+    (acc, g) => acc + (parseFloat(g.total_usd) || 0),
+    0
+  );
   const totalMontoBs = guiasFiltradas.reduce((acc, g) => acc + (parseFloat(g.total_bs) || 0), 0);
 
   return (
-    <div className="space-y-5 sm:space-y-6 animate-slide-up pb-12 font-sans">
-      {/* Mensajes Flotantes */}
-      {successMsg && (
-        <div className="bg-[#0B1A14]/90 border border-emerald-500/50 backdrop-blur-xl text-emerald-300 px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 text-sm font-semibold">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
+    <div className="space-y-4 sm:space-y-5 pb-12 animate-fade-in">
+      <ToastNotification notification={successMsg} onClose={() => setSuccessMsg(null)} />
 
       {error && (
-        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 px-5 py-3.5 rounded-2xl flex items-center gap-3 text-sm font-semibold shadow-xl">
-          <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
-          <span>{error}</span>
+        <div
+          role="alert"
+          className="p-3.5 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-2xl text-rose-700 dark:text-rose-300 text-xs sm:text-sm flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400" />
+            <span className="font-medium">{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="p-1 text-rose-500 hover:text-rose-700 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* 1. Barra Superior con Botón de Regreso y Título */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 glass-card p-4 sm:p-5 rounded-3xl shadow-sm">
-        <div className="flex items-center gap-3.5">
+      {/* Cabecera */}
+      <div className="surface-card p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={onVolverAlFacturador}
-            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white border border-slate-300 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-white/20 rounded-2xl transition-all active:scale-95 cursor-pointer shadow-sm"
-            title="Regresar al Facturador de mostrador"
+            aria-label="Regresar al punto de venta"
+            className="w-10 h-10 flex items-center justify-center btn-secondary shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-heading tracking-wide">
-              HISTORIAL Y GESTIÓN DE FACTURAS
+            <h1 className="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white">
+              Historial de Facturas y Notas
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 tracking-wide mt-0.5">
-              Consulta, filtra, reimprime o audita comprobantes emitidos
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Consulta, filtra y reimprime comprobantes emitidos en mostrador
             </p>
           </div>
         </div>
 
-        <button
-          onClick={cargarGuias}
-          disabled={loading}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white border border-slate-300 dark:border-white/[0.08] hover:border-emerald-500/30 rounded-2xl text-xs font-bold transition-all active:scale-95 min-h-[44px] cursor-pointer shadow-sm"
-        >
-          <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-500' : ''}`} />
-          <span>Actualizar Lista</span>
-        </button>
-      </div>
-
-      {/* 2. Tarjetas de Resumen / KPIs Telemetry */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group shadow-sm">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 dark:bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
-          <span className="text-xs font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider block font-heading">
-            Facturas Registradas
-          </span>
-          <div className="text-3xl font-black font-mono text-slate-900 dark:text-white mt-1.5">
-            {totalGuias}
-          </div>
-        </div>
-
-        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group border-t-4 border-t-rose-500 bg-rose-50/30 dark:bg-transparent shadow-sm">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none"></div>
-          <span className="text-xs font-extrabold text-rose-700 dark:text-slate-300 uppercase tracking-wider block font-heading">
-            Total Facturado (USD)
-          </span>
-          <div className="text-3xl font-black font-mono text-slate-900 dark:text-white mt-1.5">
-            {formatUSD(totalMontoUSD)}
-          </div>
-        </div>
-
-        <div className="glass-card p-5 rounded-3xl relative overflow-hidden group border-t-4 border-t-emerald-500 bg-emerald-50/50 dark:bg-transparent shadow-sm">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-          <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider block font-heading">
-            Total Oficial (Bolívares)
-          </span>
-          <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-700 dark:text-emerald-400 mt-1.5 truncate">
-            {formatVES(totalMontoBs)}
-          </div>
+        <div className="flex items-center gap-2">
+          {guias.length >= limiteCarga && limiteCarga < 1000 && (
+            <button
+              type="button"
+              onClick={() => {
+                setLimiteCarga(1000);
+                cargarGuias(false, 1000);
+              }}
+              disabled={loading}
+              className="min-h-[42px] inline-flex items-center justify-center gap-1.5 px-3.5 btn-secondary text-xs"
+            >
+              <span>Cargar anteriores</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => cargarGuias(true, limiteCarga)}
+            disabled={loading}
+            className="min-h-[42px] inline-flex items-center justify-center gap-2 px-4 btn-secondary text-xs"
+          >
+            <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
+            <span>Actualizar lista</span>
+          </button>
         </div>
       </div>
 
-      {/* 3. Panel de Búsqueda y Filtros */}
-      <div className="glass-card p-4 sm:p-5 rounded-3xl space-y-3.5">
-        <div className="flex flex-col md:flex-row gap-3.5">
-          {/* Buscador de texto */}
+      {/* KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className="surface-card p-4 sm:p-5 flex items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Comprobantes filtrados
+            </span>
+            <div className="font-heading text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums">
+              {totalGuias}
+            </div>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+            <Receipt className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="surface-card p-4 sm:p-5 flex items-center justify-between gap-3 border-l-4 border-l-red-600">
+          <div>
+            <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+              Total facturado (USD)
+            </span>
+            <div className="font-heading text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums">
+              {formatUSD(totalMontoUSD)}
+            </div>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-red-50 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+            <DollarSign className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="surface-card p-4 sm:p-5 flex items-center justify-between gap-3 border-l-4 border-l-emerald-600">
+          <div className="min-w-0">
+            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              Total en Bolívares
+            </span>
+            <div className="font-heading text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1 tabular-nums truncate">
+              {formatVES(totalMontoBs)}
+            </div>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Búsqueda y filtros */}
+      <div className="surface-card p-4 sm:p-5">
+        <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={busqueda}
@@ -252,19 +275,18 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                 setBusqueda(e.target.value);
                 setPaginaActual(1);
               }}
-              placeholder="Buscar por número de factura (ej: 000001), cliente o cédula/RIF..."
-              className="w-full input-cockpit rounded-2xl pl-11 pr-4 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 min-h-[46px]"
+              placeholder="Buscar por número de factura, cliente o cédula/RIF..."
+              className="input-field h-11 pl-10 pr-4 font-medium"
             />
           </div>
 
-          {/* Filtros rápidos por fecha */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 bg-slate-100 dark:bg-[#06080F]/90 p-1 rounded-2xl border border-slate-200 dark:border-white/[0.08]">
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar bg-slate-100 dark:bg-[#090d16] p-1 rounded-xl border border-slate-200 dark:border-white/[0.08]">
             {[
               { id: 'todas', label: 'Todas' },
               { id: 'hoy', label: 'Hoy' },
               { id: 'semana', label: 'Últimos 7 días' },
-              { id: 'mes', label: 'Este Mes' },
-            ].map(f => (
+              { id: 'mes', label: 'Este mes' },
+            ].map((f) => (
               <button
                 key={f.id}
                 type="button"
@@ -272,10 +294,10 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
                   setFiltroFecha(f.id);
                   setPaginaActual(1);
                 }}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 min-h-[38px] cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   filtroFecha === f.id
-                    ? 'btn-gradient-red text-white scale-[1.02]'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-white/[0.04]'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 {f.label}
@@ -285,250 +307,215 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia }) {
         </div>
       </div>
 
-      {/* 4. Tabla de Guías con Paginación */}
-      <div className="glass-card rounded-3xl overflow-hidden shadow-2xl">
+      {/* Tabla escritorio + Cards móvil */}
+      <div className="surface-card overflow-hidden">
         {loading ? (
-          <div className="py-24 text-center text-slate-400 text-sm font-medium">
-            Cargando historial de facturación...
+          <div className="py-20 text-center text-slate-500 dark:text-slate-400 text-sm">
+            Cargando historial de ventas...
           </div>
         ) : guiasPaginadas.length === 0 ? (
-          <div className="py-24 text-center text-slate-500 text-sm font-medium">
-            No se encontraron guías con los filtros aplicados.
+          <div className="py-20 text-center text-slate-500 dark:text-slate-400 text-sm">
+            No se encontraron comprobantes con los filtros aplicados.
           </div>
         ) : (
           <>
-            {/* VISTA 1: TABLA PARA COMPUTADORAS Y TABLETS */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-[#0B0F19]/90 border-b border-slate-200 dark:border-white/[0.08] text-[11px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider font-heading">
-                    <th className="py-3.5 px-4">Factura / Control</th>
-                    <th className="py-3.5 px-4">Fecha y Hora</th>
+                  <tr className="bg-slate-50 dark:bg-[#090d16] border-b border-slate-200 dark:border-white/[0.08] text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Comprobante</th>
+                    <th className="py-3.5 px-4">Fecha y hora</th>
                     <th className="py-3.5 px-4">Cliente / Razón Social</th>
-                    <th className="py-3.5 px-4 text-center">Renglones</th>
-                    <th className="py-3.5 px-4 text-right">Total ($ USD)</th>
-                    <th className="py-3.5 px-4 text-right">Total (Bs.)</th>
+                    <th className="py-3.5 px-4 text-center">Ítems</th>
+                    <th className="py-3.5 px-4 text-right">Total USD</th>
+                    <th className="py-3.5 px-4 text-right">Total Bs.</th>
                     <th className="py-3.5 px-4 text-center">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
-                  {guiasPaginadas.map((guia) => (
-                    <tr key={guia.id} className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div>
-                          <span className="font-mono font-black text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-600/15 border border-rose-200 dark:border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
-                            FACTURA Nº {(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05]">
+                  {guiasPaginadas.map((guia) => {
+                    const numDoc =
+                      (guia.codigo_guia || '').replace(/^GD-/, '') ||
+                      String(guia.numero_guia || '').padStart(6, '0');
+                    const esNota =
+                      guia.tipo_documento === 'nota_entrega' ||
+                      guia.forma_pago === 'EFECTIVO' ||
+                      guia.forma_pago === 'CREDITO_TIENDA';
+
+                    return (
+                      <tr
+                        key={guia.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors"
+                      >
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-block font-bold px-2.5 py-0.5 rounded-lg text-xs tabular-nums ${
+                              esNota
+                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+                            }`}
+                          >
+                            {esNota ? 'NOTA' : 'FACTURA'} Nº {numDoc}
                           </span>
-                          <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-1 font-semibold">
-                            Control: 00-{(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
+                            Control: 00-{numDoc}
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-mono text-xs">
-                        {formatDate(guia.fecha)}
-                      </td>
+                        <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 text-xs tabular-nums whitespace-nowrap">
+                          {formatDate(guia.fecha)}
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900 dark:text-white tracking-wide">{guia.cliente_nombre}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{guia.cliente_documento}</div>
-                      </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-semibold text-slate-900 dark:text-white">
+                            {guia.cliente_nombre}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                            {guia.cliente_documento}
+                          </div>
+                        </td>
 
-                      <td className="py-3.5 px-4 text-center font-mono">
-                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06] text-slate-700 dark:text-slate-300 font-bold">
-                          {guia.items?.length || 0}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-4 text-center tabular-nums">
+                          <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 font-semibold text-xs">
+                            {guia.items?.length || 0}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 dark:text-white">
-                        {formatUSD(guia.total_usd)}
-                      </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-slate-900 dark:text-white tabular-nums">
+                          {formatUSD(guia.total_usd)}
+                        </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
-                        {formatVES(guia.total_bs)}
-                      </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                          {formatVES(guia.total_bs)}
+                        </td>
 
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => onVerGuia(guia)}
-                            title="Ver y reimprimir guía"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/40 rounded-xl text-xs font-bold transition-all min-h-[36px] cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span className="hidden sm:inline">Ver</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setGuiaAEliminar(guia);
-                              setError(null);
-                            }}
-                            title="Eliminar guía"
-                            className="p-2 bg-rose-50 hover:bg-rose-100 dark:bg-white/[0.04] dark:hover:bg-rose-500/20 text-rose-600 dark:text-slate-400 hover:text-rose-700 dark:hover:text-rose-400 border border-rose-200 dark:border-white/[0.08] hover:border-rose-400 rounded-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onVerGuia(guia)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 btn-secondary text-xs min-h-[36px]"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>Ver</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setGuiaAEliminar(guia);
+                                setError(null);
+                              }}
+                              aria-label="Eliminar comprobante"
+                              className="w-9 h-9 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
-            {/* VISTA 2: TARJETAS COMPACTAS PARA TELÉFONOS */}
-            <div className="md:hidden divide-y divide-slate-100 dark:divide-white/[0.06] p-3 space-y-3">
-              {guiasPaginadas.map((guia) => (
-                <div key={guia.id} className="bg-slate-50 dark:bg-[#06080F]/90 p-4 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-3 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-black text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-600/15 border border-rose-200 dark:border-rose-500/30 px-2.5 py-0.5 rounded-lg text-xs shadow-sm">
-                      FACTURA Nº {(guia.codigo_guia || '').replace(/^GD-/, '') || String(guia.numero_guia || '').padStart(6, '0')}
-                    </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono font-medium">
-                      {formatDate(guia.fecha)}
-                    </span>
-                  </div>
+            {/* Tarjetas Móvil */}
+            <div className="md:hidden p-3 space-y-3">
+              {guiasPaginadas.map((guia) => {
+                const numDoc =
+                  (guia.codigo_guia || '').replace(/^GD-/, '') ||
+                  String(guia.numero_guia || '').padStart(6, '0');
+                return (
+                  <div key={guia.id} className="surface-muted p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/15 px-2.5 py-0.5 rounded-lg text-xs tabular-nums">
+                        Nº {numDoc}
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+                        {formatDate(guia.fecha)}
+                      </span>
+                    </div>
 
-                  <div>
-                    <div className="font-bold text-slate-900 dark:text-white text-sm tracking-wide">{guia.cliente_nombre}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{guia.cliente_documento}</div>
-                  </div>
-
-                  <div className="flex items-end justify-between pt-2.5 border-t border-slate-200 dark:border-white/[0.06]">
                     <div>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Total a Pagar (Bs.):</span>
-                      <span className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400 block">
-                        {formatVES(guia.total_bs)}
-                      </span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-medium">
-                        ≈ {formatUSD(guia.total_usd)}
-                      </span>
+                      <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                        {guia.cliente_nombre}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                        {guia.cliente_documento}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => onVerGuia(guia)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-200/80 hover:bg-slate-300 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-800 dark:text-white border border-slate-300 dark:border-white/[0.1] rounded-xl text-xs font-bold transition-all min-h-[38px] cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>Ver</span>
-                      </button>
+                    <div className="flex items-end justify-between pt-2.5 border-t border-slate-200/80 dark:border-white/[0.06]">
+                      <div className="tabular-nums">
+                        <span className="text-base font-bold text-emerald-700 dark:text-emerald-400 block">
+                          {formatVES(guia.total_bs)}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {formatUSD(guia.total_usd)}
+                        </span>
+                      </div>
 
-                      <button
-                        onClick={() => {
-                          setGuiaAEliminar(guia);
-                          setError(null);
-                        }}
-                        className="p-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-xl transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center cursor-pointer"
-                        title="Eliminar factura"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onVerGuia(guia)}
+                          className="min-h-[38px] inline-flex items-center gap-1.5 px-3 py-1.5 btn-secondary text-xs"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Ver</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGuiaAEliminar(guia);
+                            setError(null);
+                          }}
+                          aria-label="Eliminar comprobante"
+                          className="w-9 h-9 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl flex items-center justify-center cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
-
-        {/* 5. Controles de Paginación */}
-        <div className="p-4 border-t border-slate-200 dark:border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
-          <div className="flex items-center gap-2">
-            <span>Mostrar</span>
-            <select
-              value={porPagina}
-              onChange={(e) => {
-                setPorPagina(Number(e.target.value));
-                setPaginaActual(1);
-              }}
-              className="bg-white dark:bg-[#06080F] border border-slate-300 dark:border-white/[0.1] rounded-xl px-2.5 py-1 text-slate-800 dark:text-white font-mono focus:outline-none"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <span>por página (Total: {totalGuias} guías)</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
-              disabled={paginaActual === 1}
-              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-800 dark:text-white border border-slate-200 dark:border-transparent rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
-              title="Página Anterior"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            <span className="px-3 py-1 font-mono font-bold text-slate-800 dark:text-white">
-              Página {paginaActual} de {totalPaginas}
-            </span>
-
-            <button
-              onClick={() => setPaginaActual(prev => Math.min(totalPaginas, prev + 1))}
-              disabled={paginaActual === totalPaginas}
-              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-800 dark:text-white border border-slate-200 dark:border-transparent rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
-              title="Página Siguiente"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Modal de Confirmación de Eliminación */}
-      {guiaAEliminar && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-slide-up">
-          <div className="w-full max-w-md bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-500 dark:text-rose-400">
-              <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-2xl">
-                <Trash2 className="w-6 h-6 text-rose-600 dark:text-rose-400" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">¿Eliminar esta Factura?</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Esta acción no se puede deshacer.</p>
-              </div>
-            </div>
+      <PaginationBar
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalItems={totalGuias}
+        itemsPorPagina={porPagina}
+        onChangePagina={setPaginaActual}
+        onChangeItemsPorPagina={setPorPagina}
+        opcionesItemsPorPagina={[5, 10, 20, 50]}
+        etiquetaItem="comprobantes"
+      />
 
-            <div className="bg-slate-50 dark:bg-[#06080F] p-4 rounded-2xl border border-slate-200 dark:border-white/[0.06] text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
-              <p><strong>Comprobante:</strong> <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">{guiaAEliminar.codigo_guia}</span></p>
-              <p><strong>Cliente:</strong> {guiaAEliminar.cliente_nombre} ({guiaAEliminar.cliente_documento})</p>
-              <p><strong>Monto Total:</strong> {formatUSD(guiaAEliminar.total_usd)} ({formatVES(guiaAEliminar.total_bs)})</p>
-            </div>
-
-            {error && (
-              <div className="p-3 bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 rounded-2xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-                <span className="leading-relaxed font-medium">{error}</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setGuiaAEliminar(null);
-                  setError(null);
-                }}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold transition-colors cursor-pointer border border-slate-200 dark:border-transparent"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={confirmarEliminacion}
-                disabled={eliminando}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-rose-950/40 disabled:opacity-50 cursor-pointer"
-              >
-                {eliminando ? 'Eliminando...' : 'Sí, Eliminar Definitivamente'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={!!guiaAEliminar}
+        title="¿Eliminar este comprobante?"
+        description="Esta acción eliminará permanentemente el registro de la base de datos."
+        details={
+          guiaAEliminar
+            ? [
+                { label: 'Comprobante', value: guiaAEliminar.codigo_guia },
+                { label: 'Cliente', value: guiaAEliminar.cliente_nombre },
+                { label: 'Total USD', value: formatUSD(guiaAEliminar.total_usd) },
+              ]
+            : []
+        }
+        confirmLabel="Sí, eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={eliminando}
+        onConfirm={confirmarEliminacion}
+        onCancel={() => setGuiaAEliminar(null)}
+      />
     </div>
   );
 }
