@@ -210,11 +210,9 @@ export default function POSWorkspace({
       if (veh && !(p.modelo_vehiculo || '').toLowerCase().includes(veh)) return false;
 
       if (term) {
-        const blob = `${p.codigo_corto || ''} ${p.referencia || ''} ${p.descripcion || ''} ${
-          p.marca || ''
-        } ${p.marca_producto || ''} ${p.modelo_vehiculo || ''} ${p.linea || ''} ${
-          p.sublinea || ''
-        }`.toLowerCase();
+        const blob = `${p.codigo_corto || ''} ${p.referencia || ''} ${p.descripcion || ''} ${p.marca || ''
+          } ${p.marca_producto || ''} ${p.modelo_vehiculo || ''} ${p.linea || ''} ${p.sublinea || ''
+          }`.toLowerCase();
         if (!blob.includes(term)) return false;
       }
       return true;
@@ -936,7 +934,7 @@ export default function POSWorkspace({
               <button
                 type="button"
                 onClick={() => setMostrarFiltrosAvanzados(!mostrarFiltrosAvanzados)}
-                className={`h-8 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${mostrarFiltrosAvanzados || filtroSublinea || filtroMarca || filtroVehiculo
+                className={`h-8 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${mostrarFiltrosAvanzados || filtroLinea || filtroSublinea || filtroMarca || filtroVehiculo
                   ? 'bg-red-600 text-white'
                   : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300'
                   }`}
@@ -945,34 +943,6 @@ export default function POSWorkspace({
                 <span className="hidden sm:inline">Filtros</span>
               </button>
             </div>
-          </div>
-
-          {/* Categorías rápidas (solo filtran al hacer clic; no muestran nada por defecto) */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mr-1">
-              Filtrar por línea:
-            </span>
-            {listaLineas.slice(0, 7).map((linea) => {
-              const activa = filtroLinea === linea;
-              return (
-                <button
-                  key={linea}
-                  type="button"
-                  onClick={() => {
-                    setFiltroLinea(activa ? '' : linea);
-                    setFiltroSublinea('');
-                    setFiltroMarca('');
-                    setFiltroVehiculo('');
-                  }}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${activa
-                    ? 'bg-red-600 text-white border-red-600 shadow-sm'
-                    : 'bg-slate-50 dark:bg-[#090d16] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/20'
-                    }`}
-                >
-                  {linea}
-                </button>
-              );
-            })}
           </div>
 
           {mostrarFiltrosAvanzados && (
@@ -1203,11 +1173,10 @@ export default function POSWorkspace({
                 return (
                   <div
                     key={it.id || idx}
-                    className={`p-3 rounded-xl border transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      esRecienAgregado
-                        ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/30'
-                        : 'bg-slate-50/90 dark:bg-[#090d16] border-slate-200/90 dark:border-white/[0.08]'
-                    }`}
+                    className={`p-3 rounded-xl border transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${esRecienAgregado
+                      ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/30'
+                      : 'bg-slate-50/90 dark:bg-[#090d16] border-slate-200/90 dark:border-white/[0.08]'
+                      }`}
                   >
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-1.5 flex-wrap">

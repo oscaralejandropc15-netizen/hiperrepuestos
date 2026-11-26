@@ -180,16 +180,7 @@ export default function AppLayout({
         </div>
 
         {/* Pie del sidebar */}
-        <div className="pt-4 border-t border-white/10 space-y-3">
-          <div className="px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
-            <p className="text-xs font-semibold text-white truncate">
-              Hiper Repuestos Familycar
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5 tabular-nums">
-              RIF: J-412654489 · Charallave
-            </p>
-          </div>
-
+        <div className="pt-4 border-t border-white/10">
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">

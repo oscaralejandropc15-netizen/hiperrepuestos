@@ -221,13 +221,6 @@ export default function AuthGate({ onAuthSuccess }) {
                 )}
               </button>
             </form>
-
-            <div className="pt-3.5 border-t border-slate-100 dark:border-white/[0.07] flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-              <span>Personal autorizado</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
-                J-412654489
-              </span>
-            </div>
           </div>
         </div>
       </main>
