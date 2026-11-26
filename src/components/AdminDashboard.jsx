@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import {
   getCatalogoCached,
@@ -8,7 +8,6 @@ import {
 } from '../lib/queryCache';
 import {
   Package,
-  Truck,
   CreditCard,
   ArrowRight,
   Boxes,
@@ -33,8 +32,6 @@ import ClasificacionesTab from './admin/ClasificacionesTab';
 import CuentasCobrarTab from './admin/CuentasCobrarTab';
 import RepuestoModal from './admin/RepuestoModal';
 import AdminModals from './admin/AdminModals';
-
-const ModuloIngresoMercancia = lazy(() => import('./ModuloIngresoMercancia'));
 
 const PASOS_MODAL_REPUESTO = [
   { id: 1, label: 'Clasificación', hint: 'Línea y vehículo', icon: Layers },
@@ -1238,7 +1235,6 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
     { id: 'lineas', label: 'Líneas y Piezas', icon: Layers, count: listaLineas.length },
     { id: 'marcas', label: 'Marcas', icon: Tag, count: listaMarcas.length },
     { id: 'modelos', label: 'Vehículos', icon: Car, count: listaModelos.length },
-    { id: 'compras', label: 'Ingreso Mercancía', icon: Truck },
     {
       id: 'cxc',
       label: 'Cuentas por Cobrar',
@@ -1262,7 +1258,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
               Gestión e Inventario
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Catálogo de repuestos, recepciones de mercancía y cuentas por cobrar
+              Catálogo de repuestos, clasificaciones y cuentas por cobrar
             </p>
           </div>
         </div>
@@ -1421,23 +1417,6 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
           setFiltroMarcaInv={setFiltroMarcaInv}
           setFiltroTexto={setFiltroTexto}
         />
-      )}
-
-      {tabActiva === 'compras' && (
-        <Suspense
-          fallback={
-            <div className="surface-card p-10 text-center text-xs text-slate-500">
-              Cargando módulo de recepción de mercancía...
-            </div>
-          }
-        >
-          <ModuloIngresoMercancia
-            productos={productos}
-            cargarInventario={() => cargarInventario(true)}
-            tasaBCV={tasaBCV}
-            abrirModalCrear={abrirCrearRepuesto}
-          />
-        </Suspense>
       )}
 
       {tabActiva === 'cxc' && (

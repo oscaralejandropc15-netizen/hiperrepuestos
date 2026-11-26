@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag,
   Package,
+  Truck,
   History,
   LogOut,
   Sun,
@@ -65,7 +66,14 @@ export default function AppLayout({
       label: 'Inventario y Gestión',
       mobileLabel: 'Inventario',
       icon: Package,
-      desc: 'Catálogo, compras y CxC',
+      desc: 'Catálogo, marcas y CxC',
+    },
+    {
+      id: 'compras',
+      label: 'Entrada de Mercancía',
+      mobileLabel: 'Entrada',
+      icon: Truck,
+      desc: 'Compras y recepción',
     },
     {
       id: 'historial',
@@ -78,7 +86,8 @@ export default function AppLayout({
 
   const vistaMeta = {
     facturador: { title: 'Punto de Venta', subtitle: 'Facturación rápida en mostrador' },
-    admin: { title: 'Inventario y Gestión', subtitle: 'Repuestos, compras y cuentas por cobrar' },
+    admin: { title: 'Inventario y Gestión', subtitle: 'Catálogo, marcas y cuentas por cobrar' },
+    compras: { title: 'Entrada de Mercancía', subtitle: 'Recepción de compras y actualización de stock' },
     historial: { title: 'Historial de Ventas', subtitle: 'Consulta y reimpresión de documentos' },
   }[vista] || { title: 'Punto de Venta', subtitle: '' };
 

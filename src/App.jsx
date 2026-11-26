@@ -16,6 +16,7 @@ import { Printer, Download, ArrowLeft } from 'lucide-react';
 const AuthGate = lazy(() => import('./components/AuthGate'));
 const POSWorkspace = lazy(() => import('./components/pos/POSWorkspace'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const ModuloIngresoMercancia = lazy(() => import('./components/ModuloIngresoMercancia'));
 const HistorialPage = lazy(() => import('./components/HistorialPage'));
 const GuiaImprimible = lazy(() => import('./components/GuiaImprimible'));
 
@@ -657,6 +658,10 @@ export default function App() {
               consultarProximoCorrelativo(true);
             }}
           />
+        </Suspense>
+      ) : vista === 'compras' ? (
+        <Suspense fallback={<PageLoader label="Cargando módulo de entrada de mercancía..." />}>
+          <ModuloIngresoMercancia tasaBCV={tasaBCV} />
         </Suspense>
       ) : vista === 'admin' ? (
         <Suspense fallback={<PageLoader label="Cargando panel de inventario..." />}>

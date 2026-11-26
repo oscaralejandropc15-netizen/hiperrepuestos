@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { getBackdropProps } from '../../lib/modalBackdrop';
 import {
   Layers,
   Plus,
@@ -38,11 +39,9 @@ export default function AdminModals({
       {modalRapido.abierto &&
         createPortal(
           <div
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setModalRapido({ abierto: false, tipo: 'linea', valor: '', lineaPadre: '' });
-              }
-            }}
+            {...getBackdropProps(() =>
+              setModalRapido({ abierto: false, tipo: 'linea', valor: '', lineaPadre: '' })
+            )}
             className="fixed inset-0 z-[99999] bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           >
             <div
@@ -110,9 +109,8 @@ export default function AdminModals({
                     value={modalRapido.valor}
                     onChange={(e) => setModalRapido((prev) => ({ ...prev, valor: e.target.value }))}
                     placeholder="Escribe el nombre..."
-                    className={`input-field h-11 px-3.5 font-semibold ${
-                      modalRapido.tipo === 'marca' ? 'uppercase' : ''
-                    }`}
+                    className={`input-field h-11 px-3.5 font-semibold ${modalRapido.tipo === 'marca' ? 'uppercase' : ''
+                      }`}
                   />
                 </div>
 
@@ -143,18 +141,16 @@ export default function AdminModals({
       {modalEditar.abierto &&
         createPortal(
           <div
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setModalEditar({
-                  abierto: false,
-                  tipo: 'linea',
-                  nombreActual: '',
-                  lineaPadre: '',
-                  nuevoNombre: '',
-                  conteoAfectados: 0,
-                });
-              }
-            }}
+            {...getBackdropProps(() =>
+              setModalEditar({
+                abierto: false,
+                tipo: 'linea',
+                nombreActual: '',
+                lineaPadre: '',
+                nuevoNombre: '',
+                conteoAfectados: 0,
+              })
+            )}
             className="fixed inset-0 z-[99999] bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           >
             <div
@@ -251,17 +247,15 @@ export default function AdminModals({
       {modalConfirmarEliminar.abierto &&
         createPortal(
           <div
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setModalConfirmarEliminar({
-                  abierto: false,
-                  tipo: 'linea',
-                  nombre: '',
-                  lineaPadre: '',
-                  conteoAfectados: 0,
-                });
-              }
-            }}
+            {...getBackdropProps(() =>
+              setModalConfirmarEliminar({
+                abierto: false,
+                tipo: 'linea',
+                nombre: '',
+                lineaPadre: '',
+                conteoAfectados: 0,
+              })
+            )}
             className="fixed inset-0 z-[99999] bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           >
             <div

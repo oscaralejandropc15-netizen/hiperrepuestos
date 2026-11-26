@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Plus, Package, Sparkles } from 'lucide-react';
 import { obtenerFotoRepuesto } from '../lib/repuestosImagenes';
 import { formatUSD, formatVES, parseVenezuelanNumber } from '../lib/formatters';
+import { getBackdropProps } from '../lib/modalBackdrop';
 
 export default function ModalZoomRepuesto({
   producto,
@@ -34,9 +35,7 @@ export default function ModalZoomRepuesto({
 
   return createPortal(
     <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) cerrar?.();
-      }}
+      {...getBackdropProps(cerrar)}
       className="fixed inset-0 z-[9999] bg-slate-950/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fade-in cursor-pointer"
       role="dialog"
       aria-modal="true"

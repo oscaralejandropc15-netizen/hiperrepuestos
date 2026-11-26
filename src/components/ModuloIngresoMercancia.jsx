@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Package,
@@ -18,10 +18,16 @@ import {
   Check,
   Edit2,
   Car,
+  Truck,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { invalidateCatalogoCache } from '../lib/queryCache';
+import {
+  getCatalogoCached,
+  getCachedCatalogoSync,
+  invalidateCatalogoCache,
+} from '../lib/queryCache';
 import { formatUSD, formatVES, parseVenezuelanNumber } from '../lib/formatters';
+import { getBackdropProps } from '../lib/modalBackdrop';
 import { obtenerFotoRepuesto } from '../lib/repuestosImagenes';
 import ModalZoomRepuesto from './ModalZoomRepuesto';
 import ConfirmModal from './ui/ConfirmModal';
@@ -43,15 +49,38 @@ const PROVEEDORES_SUGERIDOS = [
 ];
 
 export default function ModuloIngresoMercancia({
-  productos = [],
+  productos: productosProp = null,
   cargarInventario,
   tasaBCV,
   abrirModalCrear,
 }) {
   const tasaNum = useMemo(() => parseVenezuelanNumber(tasaBCV) || 1, [tasaBCV]);
 
+  const [productosLocal, setProductosLocal] = useState(
+    () => getCachedCatalogoSync()?.items || []
+  );
+
+  const recargarCatalogoLocal = useCallback(async (force = false) => {
+    try {
+      const res = await getCatalogoCached({ force });
+      setProductosLocal(res.items || []);
+    } catch (err) {
+      console.warn('Error cargando catálogo en entrada de mercancía:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!productosProp || productosProp.length === 0) {
+      recargarCatalogoLocal(false);
+    }
+  }, [productosProp, recargarCatalogoLocal]);
+
+  const productos = useMemo(
+    () => (productosProp && productosProp.length > 0 ? productosProp : productosLocal),
+    [productosProp, productosLocal]
+  );
+
   const [proveedor, setProveedor] = useState('');
-  const [proveedorManual, setProveedorManual] = useState(false);
   const [fechaRecepcion, setFechaRecepcion] = useState(() => new Date().toISOString().split('T')[0]);
   const [notasOperativas, setNotasOperativas] = useState('');
   const [renglones, setRenglones] = useState([]);
@@ -147,9 +176,23 @@ export default function ModuloIngresoMercancia({
         if (costoNum > 0) {
           actualizarRenglon(modalCrearExpress.rowId, 'costo_unitario', costoNum);
         }
+      } else {
+        setRenglones((prev) => [
+          ...prev,
+          {
+            id: `renglon-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            producto_id: data.id,
+            producto: data,
+            cantidad: 1,
+            costo_unitario: costoNum > 0 ? costoNum : (data.costo_usd ?? ''),
+            busqueda: '',
+            buscando: false,
+          },
+        ]);
       }
 
       invalidateCatalogoCache();
+      await recargarCatalogoLocal(true);
       if (typeof cargarInventario === 'function') {
         cargarInventario();
       }
@@ -221,7 +264,6 @@ export default function ModuloIngresoMercancia({
 
   const ejecutarResetear = () => {
     setProveedor('');
-    setProveedorManual(false);
     setFechaRecepcion(new Date().toISOString().split('T')[0]);
     setNotasOperativas('');
     setRenglones([]);
@@ -354,13 +396,13 @@ export default function ModuloIngresoMercancia({
       });
 
       invalidateCatalogoCache();
+      await recargarCatalogoLocal(true);
       if (typeof cargarInventario === 'function') {
         await cargarInventario();
       }
 
       setRenglones([]);
       setProveedor('');
-      setProveedorManual(false);
       setNotasOperativas('');
       setConfirmState(null);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -370,6 +412,23 @@ export default function ModuloIngresoMercancia({
       setGuardando(false);
     }
   };
+
+  const listaProveedores = useMemo(() => {
+    const vistos = new Set();
+    const resultado = [];
+    const agregar = (nom) => {
+      const limpio = (nom || '').trim();
+      if (!limpio || limpio.toUpperCase() === 'PROVEEDOR GENERAL') return;
+      const key = limpio.toLowerCase();
+      if (!vistos.has(key)) {
+        vistos.add(key);
+        resultado.push(limpio);
+      }
+    };
+    historialRecepciones.forEach((r) => agregar(r.proveedor));
+    PROVEEDORES_SUGERIDOS.forEach(agregar);
+    return resultado;
+  }, [historialRecepciones]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -443,56 +502,24 @@ export default function ModuloIngresoMercancia({
       {/* Proveedor y Fecha */}
       <div className="surface-card p-4 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-4">
         <div className="md:col-span-8 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <div className="flex items-center justify-between gap-2">
+            <label
+              htmlFor="input-proveedor-recepcion"
+              className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+            >
               Proveedor
             </label>
-            <button
-              type="button"
-              onClick={() => {
-                setProveedorManual(!proveedorManual);
-                setProveedor('');
-              }}
-              className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
-            >
-              {proveedorManual ? 'Elegir de lista' : '+ Escribir otro'}
-            </button>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+              Elige de la lista o escribe uno nuevo
+            </span>
           </div>
 
-          {proveedorManual ? (
-            <input
-              type="text"
-              value={proveedor}
-              onChange={(e) => setProveedor(e.target.value)}
-              placeholder="Escribe el nombre del proveedor..."
-              className="input-field h-10 px-3.5 uppercase font-medium"
-              autoFocus
-            />
-          ) : (
-            <div className="relative">
-              <select
-                value={proveedor}
-                onChange={(e) => {
-                  if (e.target.value === '__OTRO__') {
-                    setProveedorManual(true);
-                    setProveedor('');
-                  } else {
-                    setProveedor(e.target.value);
-                  }
-                }}
-                className="input-field h-10 px-3.5 pr-9 font-medium appearance-none cursor-pointer"
-              >
-                <option value="">Seleccionar proveedor...</option>
-                {PROVEEDORES_SUGERIDOS.map((prov) => (
-                  <option key={prov} value={prov}>
-                    {prov}
-                  </option>
-                ))}
-                <option value="__OTRO__">+ Otro proveedor (escribir)...</option>
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          )}
+          <SelectorProveedor
+            inputId="input-proveedor-recepcion"
+            value={proveedor}
+            onChange={setProveedor}
+            sugerencias={listaProveedores}
+          />
         </div>
 
         <div className="md:col-span-4 space-y-1.5">
@@ -513,11 +540,24 @@ export default function ModuloIngresoMercancia({
 
       {/* Desglose de productos */}
       <div className="surface-card overflow-visible">
-        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200/80 dark:border-white/[0.06] flex items-center gap-2">
-          <Boxes className="w-4 h-4 text-red-600 dark:text-red-400" />
-          <h3 className="font-heading font-bold text-sm text-slate-900 dark:text-white">
-            Productos recibidos
-          </h3>
+        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200/80 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Boxes className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <div>
+              <h3 className="font-heading font-bold text-sm text-slate-900 dark:text-white">
+                Productos recibidos
+              </h3>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => abrirModalCrearExpress(null, '')}
+            className="min-h-[34px] px-3 py-1.5 btn-secondary text-xs inline-flex items-center gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+            <span>Crear nuevo repuesto</span>
+          </button>
         </div>
 
         {/* Cabecera solo en sm+ */}
@@ -659,9 +699,7 @@ export default function ModuloIngresoMercancia({
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setVerHistorial(false);
-            }}
+            {...getBackdropProps(() => setVerHistorial(false))}
             className="fixed inset-0 z-[9999] bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           >
             <div
@@ -752,9 +790,7 @@ export default function ModuloIngresoMercancia({
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setRecepcionDetalleModal(null);
-            }}
+            {...getBackdropProps(() => setRecepcionDetalleModal(null))}
             className="fixed inset-0 z-[10000] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           >
             <div
@@ -819,9 +855,7 @@ export default function ModuloIngresoMercancia({
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setModalCrearExpress(null);
-            }}
+            {...getBackdropProps(() => setModalCrearExpress(null))}
             className="fixed inset-0 z-[10000] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in"
           >
             <div
@@ -1073,6 +1107,32 @@ export default function ModuloIngresoMercancia({
   );
 }
 
+function calcularPosicionFloating(el, maxDesired = 260, minWidthPx = 0) {
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight || document.documentElement.clientHeight;
+  const vw = window.innerWidth || document.documentElement.clientWidth;
+  const margin = 8;
+  const espacioAbajo = vh - rect.bottom - margin;
+  const espacioArriba = rect.top - margin;
+  const abrirArriba = espacioAbajo < 180 && espacioArriba > espacioAbajo;
+  const maxHeight = Math.max(
+    140,
+    Math.min(maxDesired, abrirArriba ? espacioArriba - 6 : espacioAbajo - 6)
+  );
+  const desiredWidth = Math.max(rect.width, minWidthPx);
+  const width = Math.min(desiredWidth, vw - margin * 2);
+  const left = Math.max(margin, Math.min(rect.left, vw - width - margin));
+
+  return {
+    left,
+    width,
+    maxHeight,
+    top: abrirArriba ? undefined : rect.bottom + 6,
+    bottom: abrirArriba ? vh - rect.top + 6 : undefined,
+  };
+}
+
 function FilaRenglon({
   row,
   productos,
@@ -1084,21 +1144,51 @@ function FilaRenglon({
   abrirModalCrear,
 }) {
   const [dropdownAbierto, setDropdownAbierto] = useState(false);
-  const dropdownRef = useRef(null);
+  const [menuPos, setMenuPos] = useState(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const textoBusqueda = (row.busqueda || '').trim();
+  const mostrarResultados = dropdownAbierto && textoBusqueda.length > 0;
+
+  const actualizarPos = useCallback(() => {
+    setMenuPos(calcularPosicionFloating(triggerRef.current, 280, 300));
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!mostrarResultados) {
+      setMenuPos(null);
+      return;
+    }
+    actualizarPos();
+    const onScroll = (e) => {
+      if (menuRef.current && (e.target === menuRef.current || menuRef.current.contains(e.target))) {
+        return;
+      }
+      actualizarPos();
+    };
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', actualizarPos);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', actualizarPos);
+    };
+  }, [mostrarResultados, actualizarPos]);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownAbierto(false);
+    function handleOutside(event) {
+      if (triggerRef.current?.contains(event.target) || menuRef.current?.contains(event.target)) {
+        return;
       }
+      setDropdownAbierto(false);
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleOutside);
+    return () => document.removeEventListener('pointerdown', handleOutside);
   }, []);
 
   const productosFiltrados = useMemo(() => {
-    const q = (row.busqueda || '').toLowerCase().trim();
-    if (!q) return productos.slice(0, 15);
+    const q = textoBusqueda.toLowerCase();
+    if (!q) return [];
     return productos
       .filter((p) => {
         const codigo = (p.codigo_corto || '').toLowerCase();
@@ -1115,16 +1205,16 @@ function FilaRenglon({
         );
       })
       .slice(0, 20);
-  }, [productos, row.busqueda]);
+  }, [productos, textoBusqueda]);
 
   const foto = row.producto ? obtenerFotoRepuesto(row.producto) : null;
 
   return (
     <div className="grid grid-cols-12 gap-3 px-4 py-3.5 items-center hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors relative">
       {/* Producto */}
-      <div className="col-span-12 sm:col-span-7 relative" ref={dropdownRef}>
+      <div className="col-span-12 sm:col-span-7 relative">
         {!row.producto ? (
-          <div className="relative">
+          <div ref={triggerRef} className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -1133,144 +1223,180 @@ function FilaRenglon({
                 onActualizar('busqueda', e.target.value);
                 setDropdownAbierto(true);
               }}
-              onFocus={() => setDropdownAbierto(true)}
-              placeholder="Buscar por código, descripción o vehículo..."
-              className="input-field h-10 pl-9 pr-8"
+              onFocus={() => {
+                if (textoBusqueda.length > 0) setDropdownAbierto(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  setDropdownAbierto(false);
+                }
+              }}
+              placeholder="Escribe código, OEM o descripción para buscar..."
+              className={`input-field h-10 pl-9 pr-8 ${
+                mostrarResultados ? 'border-red-500 ring-2 ring-red-500/15' : ''
+              }`}
               autoFocus
             />
             {row.busqueda && (
               <button
                 type="button"
-                onClick={() => onActualizar('busqueda', '')}
+                onClick={() => {
+                  onActualizar('busqueda', '');
+                  setDropdownAbierto(false);
+                }}
                 aria-label="Limpiar búsqueda"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
 
-            {dropdownAbierto && (
-              <div className="absolute left-0 right-0 sm:right-auto sm:w-[560px] max-w-[calc(100vw-2.5rem)] top-full mt-1.5 bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-2xl shadow-2xl z-[999] max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06] animate-fade-in">
-                <div className="px-3.5 py-2 bg-slate-50 dark:bg-[#090d16] text-[11px] font-semibold text-slate-500 flex items-center justify-between">
-                  <span>Resultados ({productosFiltrados.length})</span>
-                  <span>Selecciona un repuesto</span>
-                </div>
+            {mostrarResultados &&
+              menuPos &&
+              typeof document !== 'undefined' &&
+              createPortal(
+                <div
+                  ref={menuRef}
+                  style={{
+                    position: 'fixed',
+                    left: `${menuPos.left}px`,
+                    width: `${menuPos.width}px`,
+                    maxHeight: `${menuPos.maxHeight}px`,
+                    top: menuPos.top !== undefined ? `${menuPos.top}px` : undefined,
+                    bottom: menuPos.bottom !== undefined ? `${menuPos.bottom}px` : undefined,
+                    zIndex: 100000,
+                  }}
+                  className="overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-2xl divide-y divide-slate-100 dark:divide-white/[0.06] animate-fade-in"
+                >
+                  <div className="px-3.5 py-2 bg-slate-50 dark:bg-[#090d16] text-[11px] font-semibold text-slate-500 flex items-center justify-between sticky top-0 z-10">
+                    <span>Resultados ({productosFiltrados.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => setDropdownAbierto(false)}
+                      className="text-slate-400 hover:text-slate-700 dark:hover:text-white inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                      <span>Cerrar</span>
+                    </button>
+                  </div>
 
-                {productosFiltrados.length === 0 ? (
-                  <div className="p-5 text-center text-xs text-slate-500 space-y-3">
-                    <p>
-                      No se encontraron repuestos con «<strong className="font-mono">{row.busqueda}</strong>».
-                    </p>
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDropdownAbierto(false);
-                          onCrearNuevo?.(row.busqueda);
-                        }}
-                        className="px-3.5 py-2 btn-gradient-red text-xs font-semibold inline-flex items-center gap-1.5"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Registrar nuevo en catálogo</span>
-                      </button>
-                      {typeof abrirModalCrear === 'function' && (
+                  {productosFiltrados.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-500 space-y-2.5">
+                      <p>
+                        No se encontró «<strong>{row.busqueda}</strong>» en el catálogo.
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
                         <button
                           type="button"
                           onClick={() => {
                             setDropdownAbierto(false);
-                            abrirModalCrear();
+                            onCrearNuevo?.(row.busqueda);
                           }}
-                          className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
+                          className="px-3.5 py-2 btn-gradient-red text-xs font-semibold inline-flex items-center gap-1.5"
                         >
-                          Ficha completa
+                          <Plus className="w-4 h-4" />
+                          <span>Registrar nuevo</span>
                         </button>
-                      )}
+                        {typeof abrirModalCrear === 'function' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDropdownAbierto(false);
+                              abrirModalCrear();
+                            }}
+                            className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
+                          >
+                            Ficha completa
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <>
-                    {productosFiltrados.map((p) => {
-                      const f = obtenerFotoRepuesto(p);
-                      const stock = parseInt(p.stock, 10) || 0;
-                      const costo = parseFloat(p.costo_usd) || 0;
+                  ) : (
+                    <>
+                      {productosFiltrados.map((p) => {
+                        const f = obtenerFotoRepuesto(p);
+                        const stock = parseInt(p.stock, 10) || 0;
+                        const costo = parseFloat(p.costo_usd) || 0;
 
-                      return (
-                        <div
-                          key={p.id}
-                          onClick={() => {
-                            onSeleccionarProducto(p);
-                            setDropdownAbierto(false);
-                          }}
-                          className="p-3 hover:bg-red-50/70 dark:hover:bg-white/[0.06] cursor-pointer transition-colors flex items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 overflow-hidden shrink-0 flex items-center justify-center p-1">
-                              {f ? (
-                                <img src={f} alt="" className="w-full h-full object-contain" />
-                              ) : (
-                                <Package className="w-4 h-4 text-slate-400" />
-                              )}
-                            </div>
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => {
+                              onSeleccionarProducto(p);
+                              setDropdownAbierto(false);
+                            }}
+                            className="p-2.5 hover:bg-red-50/70 dark:hover:bg-white/[0.06] cursor-pointer transition-colors flex items-center justify-between gap-2.5 text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
+                                {f ? (
+                                  <img src={f} alt="" className="w-full h-full object-contain" />
+                                ) : (
+                                  <Package className="w-4 h-4 text-slate-400" />
+                                )}
+                              </div>
 
-                            <div className="min-w-0 space-y-0.5">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-mono font-bold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/15 px-1.5 py-0.5 rounded text-[11px]">
-                                  {p.codigo_corto}
-                                </span>
-                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                  {p.marca_producto || p.marca}
-                                </span>
-                              </div>
-                              <div className="font-semibold text-slate-900 dark:text-slate-100 uppercase truncate">
-                                {p.descripcion}
-                              </div>
-                              {p.modelo_vehiculo && (
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
-                                  <Car className="w-3 h-3 shrink-0" />
-                                  <span className="truncate">{p.modelo_vehiculo}</span>
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/15 px-1.5 py-0.5 rounded text-[11px] tabular-nums">
+                                    {p.codigo_corto}
+                                  </span>
+                                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                    {p.marca_producto || p.marca}
+                                  </span>
                                 </div>
+                                <div className="font-semibold text-slate-900 dark:text-slate-100 uppercase truncate">
+                                  {p.descripcion}
+                                </div>
+                                {p.modelo_vehiculo && (
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
+                                    <Car className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{p.modelo_vehiculo}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0 space-y-0.5 tabular-nums">
+                              <span
+                                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full block ${
+                                  stock > 0
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                    : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                                }`}
+                              >
+                                Stock: {stock}
+                              </span>
+                              {costo > 0 && (
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                                  ${costo.toFixed(2)}
+                                </span>
                               )}
                             </div>
                           </div>
+                        );
+                      })}
 
-                          <div className="text-right shrink-0 space-y-0.5 font-mono">
-                            <span
-                              className={`text-[11px] font-semibold px-2 py-0.5 rounded-full block ${
-                                stock > 0
-                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
-                              }`}
-                            >
-                              Stock: {stock}
-                            </span>
-                            {costo > 0 && (
-                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
-                                ${costo.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    <div className="p-2.5 bg-slate-50 dark:bg-[#090d16] flex items-center justify-between gap-2 sticky bottom-0">
-                      <span className="text-[11px] text-slate-500">¿No aparece en la lista?</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDropdownAbierto(false);
-                          onCrearNuevo?.(row.busqueda);
-                        }}
-                        className="px-3 py-1.5 btn-gradient-red text-xs font-semibold inline-flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Crear nuevo</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+                      <div className="p-2.5 bg-slate-50 dark:bg-[#090d16] flex items-center justify-between gap-2 sticky bottom-0">
+                        <span className="text-[11px] text-slate-500">¿No es ninguno de estos?</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDropdownAbierto(false);
+                            onCrearNuevo?.(row.busqueda);
+                          }}
+                          className="px-3 py-1.5 btn-gradient-red text-xs font-semibold inline-flex items-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Crear nuevo</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>,
+                document.body
+              )}
           </div>
         ) : (
           <div className="flex items-center gap-2.5 p-2 rounded-xl surface-muted">
@@ -1356,5 +1482,179 @@ function FilaRenglon({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Campo único para elegir un proveedor existente o escribir uno nuevo directamente sin cambiar de modo.
+ */
+function SelectorProveedor({ inputId, value, onChange, sugerencias = [] }) {
+  const [abierto, setAbierto] = useState(false);
+  const [menuPos, setMenuPos] = useState(null);
+  const triggerRef = useRef(null);
+  const inputRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const coincidencias = useMemo(() => {
+    const q = (value || '').trim().toLowerCase();
+    if (!q) return sugerencias;
+    return sugerencias.filter((s) => s.toLowerCase().includes(q));
+  }, [value, sugerencias]);
+
+  const calcularPosicion = useCallback(() => {
+    setMenuPos(calcularPosicionFloating(triggerRef.current, 250));
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!abierto) {
+      setMenuPos(null);
+      return;
+    }
+    calcularPosicion();
+    const onScroll = (e) => {
+      if (menuRef.current && (e.target === menuRef.current || menuRef.current.contains(e.target))) {
+        return;
+      }
+      calcularPosicion();
+    };
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', calcularPosicion);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', calcularPosicion);
+    };
+  }, [abierto, calcularPosicion]);
+
+  useEffect(() => {
+    function handleOutside(e) {
+      if (triggerRef.current?.contains(e.target) || menuRef.current?.contains(e.target)) return;
+      setAbierto(false);
+    }
+    document.addEventListener('pointerdown', handleOutside);
+    return () => document.removeEventListener('pointerdown', handleOutside);
+  }, []);
+
+  const yaExisteExacto = sugerencias.some(
+    (s) => s.toLowerCase() === (value || '').trim().toLowerCase()
+  );
+
+  return (
+    <>
+      <div ref={triggerRef} className="relative flex items-center">
+        <Truck className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+        <input
+          id={inputId}
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setAbierto(true);
+          }}
+          onFocus={() => setAbierto(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              setAbierto(false);
+            } else if (e.key === 'Enter' && abierto) {
+              e.preventDefault();
+              if (coincidencias.length === 1) {
+                onChange(coincidencias[0]);
+              }
+              setAbierto(false);
+            }
+          }}
+          placeholder="Buscar o escribir nombre del proveedor..."
+          className={`input-field h-10 pl-9 pr-14 font-medium ${
+            abierto ? 'border-red-500 ring-2 ring-red-500/15' : ''
+          }`}
+        />
+
+        <div className="absolute right-1.5 flex items-center gap-0.5">
+          {value && (
+            <button
+              type="button"
+              onClick={() => {
+                onChange('');
+                setAbierto(true);
+                inputRef.current?.focus();
+              }}
+              aria-label="Limpiar proveedor"
+              className="p-1 text-slate-400 hover:text-red-500 rounded-md transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setAbierto((prev) => !prev);
+              if (!abierto) inputRef.current?.focus();
+            }}
+            aria-label={abierto ? 'Cerrar lista de proveedores' : 'Ver proveedores'}
+            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
+          >
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-150 ${
+                abierto ? 'rotate-180 text-red-500' : ''
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {abierto &&
+        menuPos &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              position: 'fixed',
+              left: `${menuPos.left}px`,
+              width: `${menuPos.width}px`,
+              maxHeight: `${menuPos.maxHeight}px`,
+              top: menuPos.top !== undefined ? `${menuPos.top}px` : undefined,
+              bottom: menuPos.bottom !== undefined ? `${menuPos.bottom}px` : undefined,
+              zIndex: 100000,
+            }}
+            className="overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-2xl p-1.5 text-xs space-y-0.5 animate-fade-in"
+          >
+            {coincidencias.map((prov) => {
+              const seleccionado = prov.toLowerCase() === (value || '').trim().toLowerCase();
+              return (
+                <button
+                  key={prov}
+                  type="button"
+                  onClick={() => {
+                    onChange(prov);
+                    setAbierto(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                    seleccionado
+                      ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <span className="truncate">{prov}</span>
+                  {seleccionado && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
+                </button>
+              );
+            })}
+
+            {value.trim() && !yaExisteExacto && (
+              <button
+                type="button"
+                onClick={() => setAbierto(false)}
+                className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Usar proveedor: «{value.trim()}»</span>
+              </button>
+            )}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }

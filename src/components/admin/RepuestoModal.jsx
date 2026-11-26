@@ -22,6 +22,7 @@ import { formatUSD, formatVES, parseVenezuelanNumber } from '../../lib/formatter
 import { obtenerLineaParaSublinea } from '../../lib/clasificacionesRepuestos';
 import { obtenerFotoRepuesto, FOTOS_CATALOGO } from '../../lib/repuestosImagenes';
 import { obtenerMarcaVehiculo } from '../../lib/vehiculosMarcas';
+import { getBackdropProps } from '../../lib/modalBackdrop';
 import SearchableCombobox from './SearchableCombobox';
 
 const PASOS_MODAL = [
@@ -69,9 +70,7 @@ export default function RepuestoModal({
 
   return createPortal(
     <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...getBackdropProps(onClose)}
       className="fixed inset-0 z-[9999] bg-slate-950/65 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in"
       role="dialog"
       aria-modal="true"

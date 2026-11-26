@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { CreditCard, X } from 'lucide-react';
 import { formatUSD, formatVES, parseVenezuelanNumber } from '../../lib/formatters';
+import { getBackdropProps } from '../../lib/modalBackdrop';
 
 export default function CuentasCobrarTab({
   cuentasCobrar,
@@ -216,9 +217,7 @@ export default function CuentasCobrarTab({
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setModalAbonoAbierto(false);
-            }}
+            {...getBackdropProps(() => setModalAbonoAbierto(false))}
             className="fixed inset-0 z-[9999] bg-slate-950/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           >
             <div

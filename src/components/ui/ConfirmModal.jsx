@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
+import { getBackdropProps } from '../../lib/modalBackdrop';
 
 /**
  * Modal de confirmación accesible (reemplaza window.confirm / window.alert nativos).
@@ -54,9 +55,7 @@ export default function ConfirmModal({
 
   return createPortal(
     <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !loading) onCancel?.();
-      }}
+      {...getBackdropProps(onCancel, !loading)}
       className="fixed inset-0 z-[99999] bg-slate-950/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
       role="dialog"
       aria-modal="true"
