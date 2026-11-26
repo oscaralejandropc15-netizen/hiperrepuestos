@@ -75,11 +75,11 @@ export default function AdminModals({
         createPortal(
           <div
             {...getBackdropProps(cerrarModalRapido)}
-            className="fixed inset-0 z-[99999] bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+            className="fixed inset-0 z-[99999] bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in"
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/10 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 animate-scale-in"
+              className="bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/10 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto max-h-[90dvh] overflow-y-auto animate-scale-in"
             >
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/[0.08]">
                 <div className="flex items-center gap-3">

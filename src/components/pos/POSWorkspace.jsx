@@ -720,6 +720,9 @@ export default function POSWorkspace({
               </select>
               <input
                 type="text"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={docNumeroActual}
                 onChange={(e) => handleDocumentoNumeroChange(e.target.value)}
                 onFocus={() => {
@@ -731,7 +734,17 @@ export default function POSWorkspace({
             </div>
 
             {mostrarSugerenciasCedula && sugerenciasCedula.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-xl p-1.5 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
+              <div className="sm:absolute sm:left-0 sm:right-0 sm:top-full mt-1.5 z-50 bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-lg sm:shadow-xl p-1.5 max-h-40 sm:max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
+                <div className="sm:hidden flex items-center justify-between px-2 py-1 text-[11px] text-slate-500">
+                  <span>Clientes encontrados</span>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSugerenciasCedula(false)}
+                    className="font-semibold text-red-600 dark:text-red-400 px-1.5 py-0.5 cursor-pointer"
+                  >
+                    Ocultar
+                  </button>
+                </div>
                 {sugerenciasCedula.map((c, i) => (
                   <button
                     key={c.id || i}
@@ -761,6 +774,9 @@ export default function POSWorkspace({
             </label>
             <input
               type="text"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={cliente.nombre || ''}
               onChange={(e) => {
                 setCliente((prev) => ({ ...prev, nombre: e.target.value }));
@@ -776,7 +792,17 @@ export default function POSWorkspace({
             />
 
             {mostrarSugerenciasNombre && sugerenciasNombre.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-xl p-1.5 max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
+              <div className="sm:absolute sm:left-0 sm:right-0 sm:top-full mt-1.5 z-50 bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-lg sm:shadow-xl p-1.5 max-h-40 sm:max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06]">
+                <div className="sm:hidden flex items-center justify-between px-2 py-1 text-[11px] text-slate-500">
+                  <span>Clientes encontrados</span>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSugerenciasNombre(false)}
+                    className="font-semibold text-red-600 dark:text-red-400 px-1.5 py-0.5 cursor-pointer"
+                  >
+                    Ocultar
+                  </button>
+                </div>
                 {sugerenciasNombre.map((c, i) => (
                   <button
                     key={c.id || i}
@@ -909,6 +935,9 @@ export default function POSWorkspace({
             <input
               ref={inputBusquedaRef}
               type="text"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={busquedaTexto}
               onChange={(e) => setBusquedaTexto(e.target.value)}
               onKeyDown={(e) => {
@@ -917,7 +946,7 @@ export default function POSWorkspace({
                 }
               }}
               placeholder="Buscar código, descripción o vehículo..."
-              className="input-field h-11 pl-10 pr-20 sm:pr-28 font-medium"
+              className="input-field h-11 pl-10 pr-20 sm:pr-28 font-medium scroll-mt-20"
             />
             <div className="absolute right-1.5 flex items-center gap-1">
               {hayFiltrosActivos && (

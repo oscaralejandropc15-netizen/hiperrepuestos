@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Package,
@@ -28,6 +28,7 @@ import {
 } from '../lib/queryCache';
 import { formatUSD, formatVES, parseVenezuelanNumber } from '../lib/formatters';
 import { getBackdropProps } from '../lib/modalBackdrop';
+import { useFloatingDropdown } from '../lib/floatingDropdown';
 import { obtenerFotoRepuesto } from '../lib/repuestosImagenes';
 import ModalZoomRepuesto from './ModalZoomRepuesto';
 import ConfirmModal from './ui/ConfirmModal';
@@ -1107,32 +1108,6 @@ export default function ModuloIngresoMercancia({
   );
 }
 
-function calcularPosicionFloating(el, maxDesired = 260, minWidthPx = 0) {
-  if (!el) return null;
-  const rect = el.getBoundingClientRect();
-  const vh = window.innerHeight || document.documentElement.clientHeight;
-  const vw = window.innerWidth || document.documentElement.clientWidth;
-  const margin = 8;
-  const espacioAbajo = vh - rect.bottom - margin;
-  const espacioArriba = rect.top - margin;
-  const abrirArriba = espacioAbajo < 180 && espacioArriba > espacioAbajo;
-  const maxHeight = Math.max(
-    140,
-    Math.min(maxDesired, abrirArriba ? espacioArriba - 6 : espacioAbajo - 6)
-  );
-  const desiredWidth = Math.max(rect.width, minWidthPx);
-  const width = Math.min(desiredWidth, vw - margin * 2);
-  const left = Math.max(margin, Math.min(rect.left, vw - width - margin));
-
-  return {
-    left,
-    width,
-    maxHeight,
-    top: abrirArriba ? undefined : rect.bottom + 6,
-    bottom: abrirArriba ? vh - rect.top + 6 : undefined,
-  };
-}
-
 function FilaRenglon({
   row,
   productos,
@@ -1144,36 +1119,16 @@ function FilaRenglon({
   abrirModalCrear,
 }) {
   const [dropdownAbierto, setDropdownAbierto] = useState(false);
-  const [menuPos, setMenuPos] = useState(null);
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
 
   const textoBusqueda = (row.busqueda || '').trim();
   const mostrarResultados = dropdownAbierto && textoBusqueda.length > 0;
 
-  const actualizarPos = useCallback(() => {
-    setMenuPos(calcularPosicionFloating(triggerRef.current, 280, 300));
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!mostrarResultados) {
-      setMenuPos(null);
-      return;
-    }
-    actualizarPos();
-    const onScroll = (e) => {
-      if (menuRef.current && (e.target === menuRef.current || menuRef.current.contains(e.target))) {
-        return;
-      }
-      actualizarPos();
-    };
-    window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', actualizarPos);
-    return () => {
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', actualizarPos);
-    };
-  }, [mostrarResultados, actualizarPos]);
+  const { isMobile, menuPos } = useFloatingDropdown(mostrarResultados, triggerRef, menuRef, {
+    maxDesired: 280,
+    minWidthPx: 300,
+  });
 
   useEffect(() => {
     function handleOutside(event) {
@@ -1209,15 +1164,148 @@ function FilaRenglon({
 
   const foto = row.producto ? obtenerFotoRepuesto(row.producto) : null;
 
+  const contenidoResultados = (
+    <>
+      <div className="px-3.5 py-2 bg-slate-50 dark:bg-[#090d16] text-[11px] font-semibold text-slate-500 flex items-center justify-between sticky top-0 z-10">
+        <span>Resultados ({productosFiltrados.length})</span>
+        <button
+          type="button"
+          onClick={() => setDropdownAbierto(false)}
+          className="text-slate-500 hover:text-slate-800 dark:hover:text-white inline-flex items-center gap-1 cursor-pointer"
+        >
+          <X className="w-3 h-3" />
+          <span>Ocultar</span>
+        </button>
+      </div>
+
+      {productosFiltrados.length === 0 ? (
+        <div className="p-4 text-center text-xs text-slate-500 space-y-2.5">
+          <p>
+            No se encontró «<strong>{row.busqueda}</strong>» en el catálogo.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setDropdownAbierto(false);
+                onCrearNuevo?.(row.busqueda);
+              }}
+              className="px-3.5 py-2 btn-gradient-red text-xs font-semibold inline-flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Registrar nuevo</span>
+            </button>
+            {typeof abrirModalCrear === 'function' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDropdownAbierto(false);
+                  abrirModalCrear();
+                }}
+                className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
+              >
+                Ficha completa
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {productosFiltrados.map((p) => {
+            const f = obtenerFotoRepuesto(p);
+            const stock = parseInt(p.stock, 10) || 0;
+            const costo = parseFloat(p.costo_usd) || 0;
+
+            return (
+              <div
+                key={p.id}
+                onClick={() => {
+                  onSeleccionarProducto(p);
+                  setDropdownAbierto(false);
+                }}
+                className="p-2.5 hover:bg-red-50/70 dark:hover:bg-white/[0.06] cursor-pointer transition-colors flex items-center justify-between gap-2.5 text-xs"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
+                    {f ? (
+                      <img src={f} alt="" className="w-full h-full object-contain" />
+                    ) : (
+                      <Package className="w-4 h-4 text-slate-400" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/15 px-1.5 py-0.5 rounded text-[11px] tabular-nums">
+                        {p.codigo_corto}
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        {p.marca_producto || p.marca}
+                      </span>
+                    </div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 uppercase truncate">
+                      {p.descripcion}
+                    </div>
+                    {p.modelo_vehiculo && (
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
+                        <Car className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{p.modelo_vehiculo}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0 space-y-0.5 tabular-nums">
+                  <span
+                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full block ${
+                      stock > 0
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                        : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                    }`}
+                  >
+                    Stock: {stock}
+                  </span>
+                  {costo > 0 && (
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                      ${costo.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="p-2.5 bg-slate-50 dark:bg-[#090d16] flex items-center justify-between gap-2 sticky bottom-0">
+            <span className="text-[11px] text-slate-500">¿No es ninguno de estos?</span>
+            <button
+              type="button"
+              onClick={() => {
+                setDropdownAbierto(false);
+                onCrearNuevo?.(row.busqueda);
+              }}
+              className="px-3 py-1.5 btn-gradient-red text-xs font-semibold inline-flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Crear nuevo</span>
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  );
+
   return (
     <div className="grid grid-cols-12 gap-3 px-4 py-3.5 items-center hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors relative">
       {/* Producto */}
       <div className="col-span-12 sm:col-span-7 relative">
         {!row.producto ? (
-          <div ref={triggerRef} className="relative">
+          <div ref={triggerRef} className="relative scroll-mt-20">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={row.busqueda}
               onChange={(e) => {
                 onActualizar('busqueda', e.target.value);
@@ -1252,7 +1340,17 @@ function FilaRenglon({
               </button>
             )}
 
+            {mostrarResultados && isMobile && (
+              <div
+                ref={menuRef}
+                className="mt-1.5 w-full max-h-52 overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-lg divide-y divide-slate-100 dark:divide-white/[0.06]"
+              >
+                {contenidoResultados}
+              </div>
+            )}
+
             {mostrarResultados &&
+              !isMobile &&
               menuPos &&
               typeof document !== 'undefined' &&
               createPortal(
@@ -1269,131 +1367,7 @@ function FilaRenglon({
                   }}
                   className="overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-2xl divide-y divide-slate-100 dark:divide-white/[0.06] animate-fade-in"
                 >
-                  <div className="px-3.5 py-2 bg-slate-50 dark:bg-[#090d16] text-[11px] font-semibold text-slate-500 flex items-center justify-between sticky top-0 z-10">
-                    <span>Resultados ({productosFiltrados.length})</span>
-                    <button
-                      type="button"
-                      onClick={() => setDropdownAbierto(false)}
-                      className="text-slate-400 hover:text-slate-700 dark:hover:text-white inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                      <span>Cerrar</span>
-                    </button>
-                  </div>
-
-                  {productosFiltrados.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-500 space-y-2.5">
-                      <p>
-                        No se encontró «<strong>{row.busqueda}</strong>» en el catálogo.
-                      </p>
-                      <div className="flex flex-wrap items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDropdownAbierto(false);
-                            onCrearNuevo?.(row.busqueda);
-                          }}
-                          className="px-3.5 py-2 btn-gradient-red text-xs font-semibold inline-flex items-center gap-1.5"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>Registrar nuevo</span>
-                        </button>
-                        {typeof abrirModalCrear === 'function' && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDropdownAbierto(false);
-                              abrirModalCrear();
-                            }}
-                            className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
-                          >
-                            Ficha completa
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {productosFiltrados.map((p) => {
-                        const f = obtenerFotoRepuesto(p);
-                        const stock = parseInt(p.stock, 10) || 0;
-                        const costo = parseFloat(p.costo_usd) || 0;
-
-                        return (
-                          <div
-                            key={p.id}
-                            onClick={() => {
-                              onSeleccionarProducto(p);
-                              setDropdownAbierto(false);
-                            }}
-                            className="p-2.5 hover:bg-red-50/70 dark:hover:bg-white/[0.06] cursor-pointer transition-colors flex items-center justify-between gap-2.5 text-xs"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
-                                {f ? (
-                                  <img src={f} alt="" className="w-full h-full object-contain" />
-                                ) : (
-                                  <Package className="w-4 h-4 text-slate-400" />
-                                )}
-                              </div>
-
-                              <div className="min-w-0 space-y-0.5">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-bold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/15 px-1.5 py-0.5 rounded text-[11px] tabular-nums">
-                                    {p.codigo_corto}
-                                  </span>
-                                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                    {p.marca_producto || p.marca}
-                                  </span>
-                                </div>
-                                <div className="font-semibold text-slate-900 dark:text-slate-100 uppercase truncate">
-                                  {p.descripcion}
-                                </div>
-                                {p.modelo_vehiculo && (
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
-                                    <Car className="w-3 h-3 shrink-0" />
-                                    <span className="truncate">{p.modelo_vehiculo}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="text-right shrink-0 space-y-0.5 tabular-nums">
-                              <span
-                                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full block ${
-                                  stock > 0
-                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-                                    : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
-                                }`}
-                              >
-                                Stock: {stock}
-                              </span>
-                              {costo > 0 && (
-                                <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
-                                  ${costo.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      <div className="p-2.5 bg-slate-50 dark:bg-[#090d16] flex items-center justify-between gap-2 sticky bottom-0">
-                        <span className="text-[11px] text-slate-500">¿No es ninguno de estos?</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDropdownAbierto(false);
-                            onCrearNuevo?.(row.busqueda);
-                          }}
-                          className="px-3 py-1.5 btn-gradient-red text-xs font-semibold inline-flex items-center gap-1"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Crear nuevo</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  {contenidoResultados}
                 </div>,
                 document.body
               )}
@@ -1490,7 +1464,6 @@ function FilaRenglon({
  */
 function SelectorProveedor({ inputId, value, onChange, sugerencias = [] }) {
   const [abierto, setAbierto] = useState(false);
-  const [menuPos, setMenuPos] = useState(null);
   const triggerRef = useRef(null);
   const inputRef = useRef(null);
   const menuRef = useRef(null);
@@ -1501,29 +1474,9 @@ function SelectorProveedor({ inputId, value, onChange, sugerencias = [] }) {
     return sugerencias.filter((s) => s.toLowerCase().includes(q));
   }, [value, sugerencias]);
 
-  const calcularPosicion = useCallback(() => {
-    setMenuPos(calcularPosicionFloating(triggerRef.current, 250));
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!abierto) {
-      setMenuPos(null);
-      return;
-    }
-    calcularPosicion();
-    const onScroll = (e) => {
-      if (menuRef.current && (e.target === menuRef.current || menuRef.current.contains(e.target))) {
-        return;
-      }
-      calcularPosicion();
-    };
-    window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', calcularPosicion);
-    return () => {
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', calcularPosicion);
-    };
-  }, [abierto, calcularPosicion]);
+  const { isMobile, menuPos } = useFloatingDropdown(abierto, triggerRef, menuRef, {
+    maxDesired: 240,
+  });
 
   useEffect(() => {
     function handleOutside(e) {
@@ -1538,14 +1491,68 @@ function SelectorProveedor({ inputId, value, onChange, sugerencias = [] }) {
     (s) => s.toLowerCase() === (value || '').trim().toLowerCase()
   );
 
-  return (
+  const contenidoProveedores = (
     <>
+      {isMobile && (
+        <div className="flex items-center justify-between px-2 py-1 mb-1 border-b border-slate-100 dark:border-white/[0.06] text-[11px] text-slate-500">
+          <span>Proveedores ({coincidencias.length})</span>
+          <button
+            type="button"
+            onClick={() => setAbierto(false)}
+            className="font-semibold text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded cursor-pointer"
+          >
+            Ocultar
+          </button>
+        </div>
+      )}
+
+      {coincidencias.map((prov) => {
+        const seleccionado = prov.toLowerCase() === (value || '').trim().toLowerCase();
+        return (
+          <button
+            key={prov}
+            type="button"
+            onClick={() => {
+              onChange(prov);
+              setAbierto(false);
+            }}
+            className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+              seleccionado
+                ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
+                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+            }`}
+          >
+            <span className="truncate">{prov}</span>
+            {seleccionado && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
+          </button>
+        );
+      })}
+
+      {value.trim() && !yaExisteExacto && (
+        <button
+          type="button"
+          onClick={() => setAbierto(false)}
+          className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 flex items-center gap-1.5 cursor-pointer"
+        >
+          <Check className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Usar proveedor: «{value.trim()}»</span>
+        </button>
+      )}
+    </>
+  );
+
+  return (
+    <div className="relative scroll-mt-20">
       <div ref={triggerRef} className="relative flex items-center">
         <Truck className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
         <input
           id={inputId}
           ref={inputRef}
           type="text"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="done"
           value={value}
           onChange={(e) => {
             onChange(e.target.value);
@@ -1603,7 +1610,17 @@ function SelectorProveedor({ inputId, value, onChange, sugerencias = [] }) {
         </div>
       </div>
 
+      {abierto && isMobile && (
+        <div
+          ref={menuRef}
+          className="mt-1.5 w-full max-h-40 overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-lg p-1.5 text-xs space-y-0.5"
+        >
+          {contenidoProveedores}
+        </div>
+      )}
+
       {abierto &&
+        !isMobile &&
         menuPos &&
         typeof document !== 'undefined' &&
         createPortal(
@@ -1620,41 +1637,10 @@ function SelectorProveedor({ inputId, value, onChange, sugerencias = [] }) {
             }}
             className="overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-2xl p-1.5 text-xs space-y-0.5 animate-fade-in"
           >
-            {coincidencias.map((prov) => {
-              const seleccionado = prov.toLowerCase() === (value || '').trim().toLowerCase();
-              return (
-                <button
-                  key={prov}
-                  type="button"
-                  onClick={() => {
-                    onChange(prov);
-                    setAbierto(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors ${
-                    seleccionado
-                      ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
-                  }`}
-                >
-                  <span className="truncate">{prov}</span>
-                  {seleccionado && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
-                </button>
-              );
-            })}
-
-            {value.trim() && !yaExisteExacto && (
-              <button
-                type="button"
-                onClick={() => setAbierto(false)}
-                className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 flex items-center gap-1.5 cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Usar proveedor: «{value.trim()}»</span>
-              </button>
-            )}
+            {contenidoProveedores}
           </div>,
           document.body
         )}
-    </>
+    </div>
   );
 }

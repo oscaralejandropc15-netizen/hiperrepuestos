@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, ChevronDown, Check, Plus } from 'lucide-react';
+import { useFloatingDropdown } from '../../lib/floatingDropdown';
 
 export const normalizarBusqueda = (str) => {
   if (str == null) return '';
@@ -39,13 +40,17 @@ export default function SearchableCombobox({
   const [abierto, setAbierto] = useState(false);
   const [filtroTexto, setFiltroTexto] = useState(() => (value ? getLabel(value) : ''));
   const [haTipeado, setHaTipeado] = useState(false);
-  const [menuPos, setMenuPos] = useState(null);
 
   const containerRef = useRef(null);
   const triggerRef = useRef(null);
   const inputRef = useRef(null);
   const menuRef = useRef(null);
   const prevValueRef = useRef(value);
+
+  const { isMobile, menuPos } = useFloatingDropdown(abierto, triggerRef, menuRef, {
+    maxDesired: 256,
+    minWidthPx: 240,
+  });
 
   const getLabelRef = useRef(getLabel);
   getLabelRef.current = getLabel;
@@ -64,61 +69,6 @@ export default function SearchableCombobox({
       setFiltroTexto(value ? getLabelRef.current(value) : '');
     }
   }, [value, haTipeado, abierto]);
-
-  const calcularPosicionMenu = useCallback(() => {
-    const el = triggerRef.current;
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    const vh = window.innerHeight || document.documentElement.clientHeight;
-    const vw = window.innerWidth || document.documentElement.clientWidth;
-    const margin = 8;
-    const espacioAbajo = vh - rect.bottom - margin;
-    const espacioArriba = rect.top - margin;
-
-    const abrirArriba = espacioAbajo < 190 && espacioArriba > espacioAbajo;
-    const maxHeight = Math.max(
-      140,
-      Math.min(256, abrirArriba ? espacioArriba - 6 : espacioAbajo - 6)
-    );
-
-    const width = Math.min(Math.max(rect.width, 240), vw - margin * 2);
-    const left = Math.max(margin, Math.min(rect.left, vw - width - margin));
-
-    setMenuPos({
-      left,
-      width,
-      maxHeight,
-      abrirArriba,
-      top: abrirArriba ? undefined : rect.bottom + 6,
-      bottom: abrirArriba ? vh - rect.top + 6 : undefined,
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!abierto) {
-      setMenuPos(null);
-      return;
-    }
-
-    calcularPosicionMenu();
-
-    const handleScroll = (e) => {
-      if (menuRef.current && (e.target === menuRef.current || menuRef.current.contains(e.target))) {
-        return;
-      }
-      calcularPosicionMenu();
-    };
-
-    const handleResize = () => calcularPosicionMenu();
-
-    window.addEventListener('scroll', handleScroll, true);
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('scroll', handleScroll, true);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [abierto, calcularPosicionMenu]);
 
   const confirmarTextoAlSalir = useCallback(() => {
     setAbierto(false);
@@ -258,8 +208,90 @@ export default function SearchableCombobox({
     );
   }, [filtroTexto, options]);
 
+  const contenidoOpciones = (
+    <>
+      {isMobile && (
+        <div className="flex items-center justify-between px-2 py-1 mb-1 border-b border-slate-100 dark:border-white/[0.06] text-[11px] text-slate-500">
+          <span>{opcionesFiltradas.length} opciones</span>
+          <button
+            type="button"
+            onClick={() => setAbierto(false)}
+            className="font-semibold text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded cursor-pointer"
+          >
+            Ocultar
+          </button>
+        </div>
+      )}
+
+      {emptyOptionLabel && (!haTipeado || !filtroTexto.trim()) && (
+        <button
+          type="button"
+          onClick={() => seleccionarOpcion('')}
+          className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors border-b border-slate-100 dark:border-white/[0.06] mb-1 ${!value
+            ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+            }`}
+        >
+          <span className="truncate">{emptyOptionLabel}</span>
+          {!value && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
+        </button>
+      )}
+
+      {opcionesFiltradas.length > 0 ? (
+        <>
+          {opcionesFiltradas.map((opt) => {
+            const labelOpt = getLabelRef.current(opt);
+            const estaSeleccionado =
+              value && value.trim().toLowerCase() === opt.trim().toLowerCase();
+
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => seleccionarOpcion(opt)}
+                className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors ${estaSeleccionado
+                  ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
+                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white'
+                  }`}
+              >
+                <span className="truncate">{labelOpt}</span>
+                {estaSeleccionado && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
+              </button>
+            );
+          })}
+
+          {onCreateNew && haTipeado && filtroTexto.trim() && !esCoincidenciaExacta && (
+            <button
+              type="button"
+              onClick={() => handleCrearNuevo(filtroTexto.trim())}
+              className="w-full text-left px-3 py-2 mt-1 rounded-lg border-t border-slate-100 dark:border-white/[0.06] text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{createNewLabel(filtroTexto.trim())}</span>
+            </button>
+          )}
+        </>
+      ) : (
+        <div className="px-3 py-3 text-center text-slate-500 dark:text-slate-400 space-y-2">
+          <p className="text-xs">Sin resultados para "{filtroTexto}"</p>
+          {onCreateNew && filtroTexto.trim() && (
+            <button
+              type="button"
+              onClick={() => handleCrearNuevo(filtroTexto.trim())}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 btn-primary text-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{createNewLabel(filtroTexto.trim())}</span>
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  );
+
   const dropdownPortal =
     abierto &&
+    !isMobile &&
     menuPos &&
     typeof document !== 'undefined' &&
     createPortal(
@@ -276,84 +308,19 @@ export default function SearchableCombobox({
         }}
         className="overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-2xl p-1.5 text-xs space-y-0.5 animate-fade-in"
       >
-        {emptyOptionLabel && (!haTipeado || !filtroTexto.trim()) && (
-          <button
-            type="button"
-            onClick={() => seleccionarOpcion('')}
-            className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors border-b border-slate-100 dark:border-white/[0.06] mb-1 ${
-              !value
-                ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
-                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
-            }`}
-          >
-            <span className="truncate">{emptyOptionLabel}</span>
-            {!value && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
-          </button>
-        )}
-
-        {opcionesFiltradas.length > 0 ? (
-          <>
-            {opcionesFiltradas.map((opt) => {
-              const labelOpt = getLabelRef.current(opt);
-              const estaSeleccionado =
-                value && value.trim().toLowerCase() === opt.trim().toLowerCase();
-
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => seleccionarOpcion(opt)}
-                  className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors ${
-                    estaSeleccionado
-                      ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <span className="truncate">{labelOpt}</span>
-                  {estaSeleccionado && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
-                </button>
-              );
-            })}
-
-            {onCreateNew && haTipeado && filtroTexto.trim() && !esCoincidenciaExacta && (
-              <button
-                type="button"
-                onClick={() => handleCrearNuevo(filtroTexto.trim())}
-                className="w-full text-left px-3 py-2 mt-1 rounded-lg border-t border-slate-100 dark:border-white/[0.06] text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{createNewLabel(filtroTexto.trim())}</span>
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="px-3 py-3 text-center text-slate-500 dark:text-slate-400 space-y-2">
-            <p className="text-xs">Sin resultados para "{filtroTexto}"</p>
-            {onCreateNew && filtroTexto.trim() && (
-              <button
-                type="button"
-                onClick={() => handleCrearNuevo(filtroTexto.trim())}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 btn-primary text-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{createNewLabel(filtroTexto.trim())}</span>
-              </button>
-            )}
-          </div>
-        )}
+        {contenidoOpciones}
       </div>,
       document.body
     );
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative scroll-mt-20" ref={containerRef}>
       {label && (
         <label
-          className={`flex items-center justify-between gap-2 font-semibold ${
-            compact
-              ? 'text-[11px] text-slate-600 dark:text-slate-400 mb-1'
-              : 'text-xs text-slate-700 dark:text-slate-300 mb-1.5'
-          }`}
+          className={`flex items-center justify-between gap-2 font-semibold ${compact
+            ? 'text-[11px] text-slate-600 dark:text-slate-400 mb-1'
+            : 'text-xs text-slate-700 dark:text-slate-300 mb-1.5'
+            }`}
         >
           <span>{label}</span>
           {!hideStatusBadge &&
@@ -369,34 +336,35 @@ export default function SearchableCombobox({
 
       <div ref={triggerRef} className="relative flex items-center">
         <Search
-          className={`w-3.5 h-3.5 text-slate-400 absolute pointer-events-none ${
-            compact ? 'left-2.5' : 'left-3'
-          }`}
+          className={`w-3.5 h-3.5 text-slate-400 absolute pointer-events-none ${compact ? 'left-2.5' : 'left-3'
+            }`}
         />
         <input
           ref={inputRef}
           type="text"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="done"
           value={filtroTexto}
           onChange={handleInputChange}
           onFocus={(e) => {
             setAbierto(true);
-            if (value && !haTipeado) {
+            if (!isMobile && value && !haTipeado) {
               e.target.select();
             }
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || emptyOptionLabel || 'Buscar o escribir...'}
-          className={`input-field ${
-            compact
-              ? 'h-9 pl-8 pr-12 text-xs font-medium'
-              : 'h-10 pl-9 pr-14 font-semibold'
-          } ${
-            abierto
+          className={`input-field ${compact
+            ? 'h-9 pl-8 pr-12 text-xs font-medium'
+            : 'h-10 pl-9 pr-14 font-semibold'
+            } ${abierto
               ? 'border-red-500 ring-2 ring-red-500/15'
               : compact && value
                 ? 'border-red-500 ring-1 ring-red-500/20'
                 : ''
-          }`}
+            }`}
         />
 
         <div className="absolute right-1.5 flex items-center gap-0.5">
@@ -420,13 +388,21 @@ export default function SearchableCombobox({
             className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
           >
             <ChevronDown
-              className={`w-3.5 h-3.5 transition-transform duration-150 ${
-                abierto ? 'rotate-180 text-red-500' : ''
-              }`}
+              className={`w-3.5 h-3.5 transition-transform duration-150 ${abierto ? 'rotate-180 text-red-500' : ''
+                }`}
             />
           </button>
         </div>
       </div>
+
+      {abierto && isMobile && (
+        <div
+          ref={menuRef}
+          className="mt-1.5 w-full max-h-40 overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-lg p-1.5 text-xs space-y-0.5"
+        >
+          {contenidoOpciones}
+        </div>
+      )}
 
       {dropdownPortal}
     </div>
