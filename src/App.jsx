@@ -4,6 +4,7 @@ import { calculateTotals, parseVenezuelanNumber, generarVariantesCedula } from '
 import { fetchTasaBCV } from './lib/bcvService';
 import {
   getCorrelativoCached,
+  invalidateCache,
   invalidateCorrelativoCache,
   invalidateHistorialCache,
   invalidateCuentasCobrarCache,
@@ -592,7 +593,10 @@ export default function App() {
       proximoCorrelativo={proximoCorrelativo}
       itemsCarrito={items}
       session={session}
-      onCerrarSesion={() => supabase.auth.signOut()}
+      onCerrarSesion={() => {
+        invalidateCache();
+        return supabase.auth.signOut();
+      }}
       theme={theme}
       setTheme={setTheme}
       parseVenezuelanNumber={parseVenezuelanNumber}

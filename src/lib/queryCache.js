@@ -20,6 +20,57 @@ const HISTORIAL_CACHE_KEY = 'historial:guias';
 const CXC_CACHE_KEY = 'cxc:lista';
 
 const DEFAULT_CATALOGO_LIMIT = 1000;
+const CATALOGO_TTL_MS = 10 * 60 * 1000;
+const CORRELATIVO_TTL_MS = 3 * 60 * 1000;
+const SESSION_CACHE_PREFIX = 'hr_sb_cache_v1:';
+const SESSION_PERSISTED_KEYS = new Set([CATALOGO_CACHE_KEY, CORRELATIVO_CACHE_KEY]);
+
+function readSessionEntry(key) {
+  if (!SESSION_PERSISTED_KEYS.has(key) || typeof window === 'undefined' || !window.sessionStorage) {
+    return null;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(`${SESSION_CACHE_PREFIX}${key}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.timestamp !== 'number') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionEntry(key, entry) {
+  if (!SESSION_PERSISTED_KEYS.has(key) || typeof window === 'undefined' || !window.sessionStorage) {
+    return;
+  }
+  try {
+    const serialized = JSON.stringify(entry);
+    if (serialized.length < 3_000_000) {
+      window.sessionStorage.setItem(`${SESSION_CACHE_PREFIX}${key}`, serialized);
+    }
+  } catch {
+    // Cuota de sessionStorage llena o bloqueada: se mantiene solo en memoria RAM
+  }
+}
+
+function removeSessionEntries(prefixOrKey) {
+  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < window.sessionStorage.length; i++) {
+      const storageKey = window.sessionStorage.key(i);
+      if (!storageKey || !storageKey.startsWith(SESSION_CACHE_PREFIX)) continue;
+      const cacheKey = storageKey.slice(SESSION_CACHE_PREFIX.length);
+      if (!prefixOrKey || cacheKey === prefixOrKey || cacheKey.startsWith(prefixOrKey)) {
+        keysToRemove.push(storageKey);
+      }
+    }
+    keysToRemove.forEach((k) => window.sessionStorage.removeItem(k));
+  } catch {
+    // Ignorar en entornos restringidos
+  }
+}
 
 export async function fetchWithCache(key, fetcher, { ttlMs = 5 * 60 * 1000, force = false } = {}) {
   const now = Date.now();
@@ -27,6 +78,11 @@ export async function fetchWithCache(key, fetcher, { ttlMs = 5 * 60 * 1000, forc
     const cached = cacheStore.get(key);
     if (cached && now - cached.timestamp < ttlMs) {
       return cached.data;
+    }
+    const persisted = readSessionEntry(key);
+    if (persisted && now - persisted.timestamp < ttlMs) {
+      cacheStore.set(key, persisted);
+      return persisted.data;
     }
   }
 
@@ -37,7 +93,9 @@ export async function fetchWithCache(key, fetcher, { ttlMs = 5 * 60 * 1000, forc
   const promise = (async () => {
     try {
       const data = await fetcher();
-      cacheStore.set(key, { data, timestamp: Date.now() });
+      const entry = { data, timestamp: Date.now() };
+      cacheStore.set(key, entry);
+      writeSessionEntry(key, entry);
       return data;
     } finally {
       inFlightStore.delete(key);
@@ -51,6 +109,7 @@ export async function fetchWithCache(key, fetcher, { ttlMs = 5 * 60 * 1000, forc
 export function invalidateCache(prefixOrKey) {
   if (!prefixOrKey) {
     cacheStore.clear();
+    removeSessionEntries(null);
     return;
   }
   for (const k of cacheStore.keys()) {
@@ -58,10 +117,20 @@ export function invalidateCache(prefixOrKey) {
       cacheStore.delete(k);
     }
   }
+  removeSessionEntries(prefixOrKey);
 }
 
 export function getCachedCatalogoSync() {
+  const now = Date.now();
   const entry = cacheStore.get(CATALOGO_CACHE_KEY);
+  if (entry && now - entry.timestamp < CATALOGO_TTL_MS) {
+    return entry.data || null;
+  }
+  const persisted = readSessionEntry(CATALOGO_CACHE_KEY);
+  if (persisted && now - persisted.timestamp < CATALOGO_TTL_MS) {
+    cacheStore.set(CATALOGO_CACHE_KEY, persisted);
+    return persisted.data || null;
+  }
   return entry?.data || null;
 }
 
@@ -87,7 +156,7 @@ export async function getCatalogoCached({ force = false } = {}) {
         isTruncated: items.length >= DEFAULT_CATALOGO_LIMIT,
       };
     },
-    { ttlMs: 10 * 60 * 1000, force }
+    { ttlMs: CATALOGO_TTL_MS, force }
   );
 }
 
@@ -121,7 +190,7 @@ export async function getCorrelativoCached({ force = false } = {}) {
       }
       return candidato;
     },
-    { ttlMs: 3 * 60 * 1000, force }
+    { ttlMs: CORRELATIVO_TTL_MS, force }
   );
 }
 
@@ -146,7 +215,7 @@ export async function getHistorialCached({ force = false, limit = 100 } = {}) {
       if (error) throw error;
       return data || [];
     },
-    { ttlMs: 3 * 60 * 1000, force }
+    { ttlMs: CORRELATIVO_TTL_MS, force }
   );
 }
 
@@ -212,7 +281,7 @@ export async function getCuentasCobrarCached({ force = false } = {}) {
 
       return listaFinal;
     },
-    { ttlMs: 3 * 60 * 1000, force }
+    { ttlMs: CORRELATIVO_TTL_MS, force }
   );
 }
 

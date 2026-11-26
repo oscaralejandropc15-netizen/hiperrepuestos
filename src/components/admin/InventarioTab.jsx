@@ -11,6 +11,7 @@ import {
   Package
 } from 'lucide-react';
 import PaginationBar from '../ui/PaginationBar';
+import SearchableCombobox from './SearchableCombobox';
 import { formatUSD, formatNumber, parseVenezuelanNumber } from '../../lib/formatters';
 import { obtenerFotoRepuesto } from '../../lib/repuestosImagenes';
 
@@ -96,50 +97,38 @@ export default function InventarioTab({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 dark:border-white/[0.06]">
-          <select
+          <SearchableCombobox
             value={filtroLineaInv}
-            onChange={(e) => {
-              setFiltroLineaInv(e.target.value);
+            onChange={(val) => {
+              setFiltroLineaInv(val);
               setFiltroSublineaInv('');
             }}
-            className={`input-field h-9 px-2.5 text-xs font-medium cursor-pointer ${filtroLineaInv ? 'border-red-500 ring-1 ring-red-500/20' : ''
-              }`}
-          >
-            <option value="">Todas las líneas</option>
-            {listaLineas.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
+            options={listaLineas}
+            emptyOptionLabel="Todas las líneas"
+            placeholder="Todas las líneas"
+            compact
+            hideStatusBadge
+          />
 
-          <select
+          <SearchableCombobox
             value={filtroSublineaInv}
-            onChange={(e) => setFiltroSublineaInv(e.target.value)}
-            className={`input-field h-9 px-2.5 text-xs font-medium cursor-pointer ${filtroSublineaInv ? 'border-red-500 ring-1 ring-red-500/20' : ''
-              }`}
-          >
-            <option value="">Todas las sublíneas</option>
-            {sublineasDisponiblesInv.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+            onChange={setFiltroSublineaInv}
+            options={sublineasDisponiblesInv}
+            emptyOptionLabel="Todas las sublíneas"
+            placeholder="Todas las sublíneas"
+            compact
+            hideStatusBadge
+          />
 
-          <select
+          <SearchableCombobox
             value={filtroMarcaInv}
-            onChange={(e) => setFiltroMarcaInv(e.target.value)}
-            className={`input-field h-9 px-2.5 text-xs font-medium cursor-pointer ${filtroMarcaInv ? 'border-red-500 ring-1 ring-red-500/20' : ''
-              }`}
-          >
-            <option value="">Todas las marcas</option>
-            {listaMarcas.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+            onChange={setFiltroMarcaInv}
+            options={listaMarcas}
+            emptyOptionLabel="Todas las marcas"
+            placeholder="Todas las marcas"
+            compact
+            hideStatusBadge
+          />
 
           <div className="flex items-center justify-between gap-2 px-1">
             <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">

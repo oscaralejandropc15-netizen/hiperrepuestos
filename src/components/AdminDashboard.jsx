@@ -490,7 +490,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
       const img = new window.Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_DIM = 420;
+        const MAX_DIM = 320;
         let width = img.width;
         let height = img.height;
         if (width > height) {
@@ -508,16 +508,16 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
-        let dataUrl = canvas.toDataURL('image/webp', 0.72);
-        if (!dataUrl.startsWith('data:image/webp')) {
-          dataUrl = canvas.toDataURL('image/jpeg', 0.68);
+        let dataUrl = canvas.toDataURL('image/webp', 0.68);
+        const usaWebp = dataUrl.startsWith('data:image/webp');
+        if (!usaWebp) {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.58);
         }
-        if (dataUrl.length > 30000) {
-          const fallbackUrl = canvas.toDataURL(
-            dataUrl.startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg',
-            0.55
-          );
-          if (fallbackUrl.length < dataUrl.length) dataUrl = fallbackUrl;
+        const mime = usaWebp ? 'image/webp' : 'image/jpeg';
+        for (const calidad of [0.52, 0.42, 0.34]) {
+          if (dataUrl.length <= 14000) break;
+          const candidato = canvas.toDataURL(mime, calidad);
+          if (candidato.length < dataUrl.length) dataUrl = candidato;
         }
         setFormRepuesto((prev) => ({ ...prev, imagen_url: dataUrl }));
         mostrarNotificacion('Foto comprimida y lista para guardar.', 'success');
@@ -845,7 +845,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [modalRepuestoAbierto, modalRapido.abierto, modalEditar.abierto, modalConfirmarEliminar.abierto]);
 
-  // Cálculos de precios en formulario
+  // Cálculos sincronizados de costo, margen y precio de venta
   const recalcularPrecioVenta = (costo, margen) => {
     const c = parseFloat(costo) || 0;
     const m = parseFloat(margen);
@@ -858,19 +858,36 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
   };
 
   const handleCostoChange = (val) => {
-    setFormRepuesto((prev) => ({ ...prev, costo_usd: val }));
     const c = parseFloat(val) || 0;
-    if (c > 0 && formRepuesto.margen_detal) {
-      recalcularPrecioVenta(val, formRepuesto.margen_detal);
-    }
+    setFormRepuesto((prev) => {
+      if (c <= 0) {
+        return { ...prev, costo_usd: val };
+      }
+      if (!repuestoEditandoId || !prev.precio_detal_usd) {
+        const m = parseFloat(prev.margen_detal);
+        const margenValido = isNaN(m) ? 40 : m;
+        return {
+          ...prev,
+          costo_usd: val,
+          precio_detal_usd: (c * (1 + margenValido / 100)).toFixed(2),
+        };
+      }
+      const pActual = parseFloat(prev.precio_detal_usd) || 0;
+      const margenReal = pActual > 0 ? Math.round(((pActual - c) / c) * 100) : 0;
+      return {
+        ...prev,
+        costo_usd: val,
+        margen_detal: String(margenReal),
+      };
+    });
   };
 
   const handleMargenChange = (val) => {
     const c = parseFloat(formRepuesto.costo_usd) || 0;
     setFormRepuesto((prev) => ({ ...prev, margen_detal: val }));
-    if (c > 0) {
+    if (c > 0 && val !== '') {
       recalcularPrecioVenta(formRepuesto.costo_usd, val);
-    } else {
+    } else if (c <= 0) {
       mostrarNotificacion('Ingresa primero el Costo ($) para calcular por margen.', 'info');
     }
   };
@@ -878,11 +895,11 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
   const handlePrecioVentaChange = (val) => {
     setFormRepuesto((prev) => {
       const c = parseFloat(prev.costo_usd) || 0;
-      const p = parseFloat(val) || 0;
+      const p = parseFloat(val);
       let nuevoMargen = prev.margen_detal;
-      if (c > 0 && p >= c) {
+      if (c > 0 && val !== '' && !isNaN(p)) {
         nuevoMargen = String(Math.round(((p - c) / c) * 100));
-      } else if (c <= 0) {
+      } else if (c <= 0 || val === '') {
         nuevoMargen = '';
       }
       return { ...prev, precio_detal_usd: val, margen_detal: nuevoMargen };
@@ -975,7 +992,12 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
     setRepuestoEditandoId(p.id);
     const costo = parseFloat(p.costo_usd) || 0;
     const detal = parseFloat(p.precio_detal_usd) || 0;
-    const mDetal = costo > 0 && detal > costo ? Math.round(((detal - costo) / costo) * 100) : 40;
+    const mDetal =
+      costo > 0 && detal > 0
+        ? Math.round(((detal - costo) / costo) * 100)
+        : costo > 0
+        ? 0
+        : 40;
 
     setFormRepuesto({
       codigo_corto: p.codigo_corto || '',

@@ -16,7 +16,11 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  Minus,
+  Plus,
+  MapPin,
+  AlertTriangle,
+  TrendingUp,
 } from 'lucide-react';
 import { formatUSD, formatVES, parseVenezuelanNumber } from '../../lib/formatters';
 import { obtenerLineaParaSublinea } from '../../lib/clasificacionesRepuestos';
@@ -67,6 +71,14 @@ export default function RepuestoModal({
   if (!abierto || typeof document === 'undefined') return null;
 
   const tasaNum = parseVenezuelanNumber(tasaBCV) || 1;
+  const costoNum = parseFloat(formRepuesto.costo_usd) || 0;
+  const precioBaseNum = parseFloat(formRepuesto.precio_detal_usd) || 0;
+  const gananciaUSD = costoNum > 0 && precioBaseNum > 0 ? precioBaseNum - costoNum : 0;
+  const bajoCosto = costoNum > 0 && precioBaseNum > 0 && precioBaseNum < costoNum;
+  const factorIva = formRepuesto.aplica_iva ? 1.16 : 1;
+  const precioFinalBCVUSD = precioBaseNum * factorIva;
+  const precioFinalBCVBs = precioFinalBCVUSD * tasaNum;
+  const stockNum = parseInt(formRepuesto.stock, 10) || 0;
 
   return createPortal(
     <div
@@ -387,23 +399,30 @@ export default function RepuestoModal({
               )}
 
               {pasoModalRepuesto === 3 && (
-                <div className="surface-card p-5 space-y-4 animate-fade-in">
-                  <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+                <div className="surface-card p-4 sm:p-5 space-y-4 animate-fade-in">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
                     <div>
                       <h3 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
                         Fotografía del Repuesto (Opcional)
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Sube una foto real, pega con Ctrl+V o selecciona del catálogo
+                        Sube una foto, pega con Ctrl + V o elige una referencia de catálogo
                       </p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-white/[0.08] text-slate-700 dark:text-slate-300 shrink-0">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0 ${
+                        esFotoPersonalizada
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                          : 'bg-slate-100 dark:bg-white/[0.08] text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
                       {esFotoPersonalizada ? 'Foto asignada' : 'Sin foto'}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center">
-                    <div className="sm:col-span-5 flex justify-center">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                    {/* Columna izquierda: Vista previa limpia + Dropzone */}
+                    <div className="md:col-span-5 flex flex-col items-center gap-2.5">
                       <div
                         onDragOver={(e) => {
                           e.preventDefault();
@@ -416,10 +435,13 @@ export default function RepuestoModal({
                           if (e.dataTransfer.files?.[0]) procesarArchivoImagen(e.dataTransfer.files[0]);
                         }}
                         onClick={() => fileInputFotoRef.current?.click()}
-                        className={`w-44 h-44 sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-dashed transition-all p-2 flex items-center justify-center relative group bg-slate-50 dark:bg-[#090d16] cursor-pointer ${isDraggingFoto
-                          ? 'border-red-500 bg-red-50 dark:bg-red-500/10'
-                          : 'border-slate-300 dark:border-white/15 hover:border-red-500'
-                          }`}
+                        className={`w-44 h-44 sm:w-48 sm:h-48 rounded-2xl overflow-hidden transition-all p-3 flex items-center justify-center relative group cursor-pointer ${
+                          isDraggingFoto
+                            ? 'border-2 border-dashed border-red-500 bg-red-50 dark:bg-red-500/10'
+                            : fotoActualMostrada
+                            ? 'border border-slate-200 dark:border-white/15 bg-white shadow-sm hover:border-red-400'
+                            : 'border-2 border-dashed border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-[#090d16] hover:border-red-500'
+                        }`}
                       >
                         {fotoActualMostrada ? (
                           <img
@@ -428,20 +450,35 @@ export default function RepuestoModal({
                             className="max-h-full max-w-full object-contain"
                           />
                         ) : (
-                          <div className="flex flex-col items-center text-slate-400 dark:text-slate-500 gap-1.5 text-center p-3">
+                          <div className="flex flex-col items-center text-slate-400 dark:text-slate-500 gap-1.5 text-center p-2">
                             <CameraOff className="w-9 h-9 stroke-1" />
-                            <span className="text-xs font-semibold">Sin foto asignada</span>
-                            <span className="text-[11px]">Clic o arrastra aquí</span>
+                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                              Sin fotografía
+                            </span>
+                            <span className="text-[11px] leading-tight">
+                              Haz clic, arrastra o pega con Ctrl + V
+                            </span>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white rounded-2xl">
+                        <div className="absolute inset-0 bg-slate-900/55 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white rounded-2xl">
                           <Upload className="w-5 h-5 mb-1" />
-                          <span className="text-xs font-semibold">Cambiar imagen</span>
+                          <span className="text-xs font-semibold">
+                            {fotoActualMostrada ? 'Cambiar foto' : 'Subir foto'}
+                          </span>
                         </div>
                       </div>
+
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+                        {fotoActualMostrada?.startsWith('data:')
+                          ? 'Foto personalizada comprimida'
+                          : fotoActualMostrada
+                          ? 'Imagen de catálogo local'
+                          : 'Se sugerirá ícono por defecto'}
+                      </span>
                     </div>
 
-                    <div className="sm:col-span-7 space-y-4">
+                    {/* Columna derecha: Acciones y catálogo completo sin recortes */}
+                    <div className="md:col-span-7 space-y-3.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
@@ -455,7 +492,10 @@ export default function RepuestoModal({
                         <button
                           type="button"
                           onClick={() => {
-                            const fotoSugerida = obtenerFotoRepuesto(formRepuesto);
+                            const fotoSugerida = obtenerFotoRepuesto({
+                              ...formRepuesto,
+                              imagen_url: '',
+                            });
                             if (fotoSugerida) {
                               setFormRepuesto((prev) => ({ ...prev, imagen_url: fotoSugerida }));
                               mostrarNotificacion('Foto sugerida del catálogo asignada.', 'info');
@@ -469,7 +509,7 @@ export default function RepuestoModal({
                           className="min-h-[38px] px-3.5 btn-secondary text-xs inline-flex items-center gap-1.5"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Sugerir del catálogo</span>
+                          <span>Auto-sugerir</span>
                         </button>
 
                         {fotoActualMostrada && (
@@ -487,31 +527,45 @@ export default function RepuestoModal({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {[
-                          { label: 'Pastillas Freno', url: FOTOS_CATALOGO.pastillas_freno },
-                          { label: 'Amortiguador', url: FOTOS_CATALOGO.amortiguador },
-                          { label: 'Bujía', url: FOTOS_CATALOGO.bujia },
-                          { label: 'Filtro Aceite', url: FOTOS_CATALOGO.filtro_aceite },
-                          { label: 'Bomba de Agua', url: FOTOS_CATALOGO.bomba_agua },
-                          { label: 'Rótula / Muñón', url: FOTOS_CATALOGO.munon_rotula },
-                        ].map((preset) => (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => {
-                              setFormRepuesto((prev) => ({ ...prev, imagen_url: preset.url }));
-                              mostrarNotificacion(`Foto asignada: ${preset.label}`, 'success');
-                            }}
-                            className={`h-9 px-2.5 rounded-xl text-xs font-medium flex items-center gap-2 border cursor-pointer ${formRepuesto.imagen_url === preset.url
-                              ? 'bg-red-50 dark:bg-red-500/15 border-red-500 text-red-700 dark:text-red-300'
-                              : 'bg-slate-50 dark:bg-[#090d16] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300'
-                              }`}
-                          >
-                            <img src={preset.url} alt="" className="w-5 h-5 object-contain rounded" />
-                            <span className="truncate">{preset.label}</span>
-                          </button>
-                        ))}
+                      <div className="space-y-2">
+                        <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          Referencias rápidas del catálogo
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {[
+                            { label: 'Pastillas', url: FOTOS_CATALOGO.pastillas_freno },
+                            { label: 'Amortiguador', url: FOTOS_CATALOGO.amortiguador },
+                            { label: 'Bujía', url: FOTOS_CATALOGO.bujia },
+                            { label: 'Filtro aceite', url: FOTOS_CATALOGO.filtro_aceite },
+                            { label: 'Bomba agua', url: FOTOS_CATALOGO.bomba_agua },
+                            { label: 'Muñón / Rótula', url: FOTOS_CATALOGO.munon_rotula },
+                            { label: 'Bomba gasolina', url: FOTOS_CATALOGO.bomba_gasolina },
+                            { label: 'Kit embrague', url: FOTOS_CATALOGO.kit_embrague },
+                            { label: 'Aceite motor', url: FOTOS_CATALOGO.aceite_motor },
+                          ].map((preset) => {
+                            const activa = formRepuesto.imagen_url === preset.url;
+                            return (
+                              <button
+                                key={preset.label}
+                                type="button"
+                                onClick={() => {
+                                  setFormRepuesto((prev) => ({ ...prev, imagen_url: preset.url }));
+                                  mostrarNotificacion(`Foto asignada: ${preset.label}`, 'success');
+                                }}
+                                className={`min-h-[42px] px-2.5 py-1.5 rounded-xl text-[11px] font-semibold flex items-center gap-2 border text-left transition-all cursor-pointer ${
+                                  activa
+                                    ? 'bg-red-50 dark:bg-red-500/15 border-red-500 text-red-700 dark:text-red-300 ring-1 ring-red-500/20'
+                                    : 'bg-slate-50 hover:bg-white dark:bg-[#090d16] dark:hover:bg-white/[0.04] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                                }`}
+                              >
+                                <span className="w-6 h-6 rounded-md bg-white border border-slate-200/80 flex items-center justify-center shrink-0 p-0.5">
+                                  <img src={preset.url} alt="" className="w-full h-full object-contain" />
+                                </span>
+                                <span className="leading-tight flex-1">{preset.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -520,25 +574,33 @@ export default function RepuestoModal({
 
               {pasoModalRepuesto === 4 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div className="surface-card p-5 space-y-4 border-l-4 border-l-emerald-500">
+                  <div className="surface-card p-4 sm:p-5 space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
-                      <div>
-                        <h3 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                          Costo y Precio de Venta Detal
-                        </h3>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                          <TrendingUp className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                            Costo, Margen y Precio de Venta
+                          </h3>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Usa un margen rápido o ajusta el precio directo en dólares
+                          </p>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1 flex-wrap">
-                        {[30, 40, 50, 60, 100].map((mVal) => (
+                        {[25, 30, 40, 50, 60, 100].map((mVal) => (
                           <button
                             key={mVal}
                             type="button"
                             onClick={() => handleMargenChange(String(mVal))}
-                            className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-semibold cursor-pointer ${String(formRepuesto.margen_detal) === String(mVal) &&
-                              parseFloat(formRepuesto.costo_usd) > 0
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                              }`}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold tabular-nums transition-colors cursor-pointer ${
+                              String(formRepuesto.margen_detal) === String(mVal) && costoNum > 0
+                                ? 'bg-emerald-600 text-white shadow-sm'
+                                : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300'
+                            }`}
                           >
                             +{mVal}%
                           </button>
@@ -549,57 +611,145 @@ export default function RepuestoModal({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                          Costo ($ USD)
+                          Costo de compra
                         </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formRepuesto.costo_usd}
-                          onChange={(e) => handleCostoChange(e.target.value)}
-                          placeholder="0.00"
-                          className="input-field h-10 px-3 font-mono font-semibold"
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formRepuesto.costo_usd}
+                            onChange={(e) => handleCostoChange(e.target.value)}
+                            placeholder="0.00"
+                            className="input-field h-10 pl-7 pr-3 font-semibold tabular-nums"
+                          />
+                        </div>
                       </div>
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                          Margen (%)
+                          Margen de ganancia
                         </label>
-                        <input
-                          type="number"
-                          step="1"
-                          min="0"
-                          value={formRepuesto.margen_detal}
-                          onChange={(e) => handleMargenChange(e.target.value)}
-                          placeholder="40"
-                          className="input-field h-10 px-3 font-mono font-semibold"
-                        />
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="1"
+                            value={formRepuesto.margen_detal}
+                            onChange={(e) => handleMargenChange(e.target.value)}
+                            placeholder="40"
+                            className={`input-field h-10 pl-3 pr-8 font-semibold tabular-nums ${
+                              bajoCosto
+                                ? 'border-rose-500 text-rose-700 dark:text-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
+                                : ''
+                            }`}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                            %
+                          </span>
+                        </div>
                       </div>
 
                       <div>
                         <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">
-                          Precio venta ($ USD) *
+                          Precio venta base *
                         </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formRepuesto.precio_detal_usd}
-                          onChange={(e) => handlePrecioVentaChange(e.target.value)}
-                          placeholder="0.00"
-                          className="input-field h-10 px-3 font-mono font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/50"
-                        />
+                        <div className="relative">
+                          <span
+                            className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold ${
+                              bajoCosto ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'
+                            }`}
+                          >
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formRepuesto.precio_detal_usd}
+                            onChange={(e) => handlePrecioVentaChange(e.target.value)}
+                            placeholder="0.00"
+                            className={`input-field h-10 pl-7 pr-3 font-bold tabular-nums ${
+                              bajoCosto
+                                ? 'border-rose-500 text-rose-700 dark:text-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
+                                : 'text-emerald-700 dark:text-emerald-300 border-emerald-500/60 focus:border-emerald-600 focus:ring-emerald-500/20'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {bajoCosto && (
+                      <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 flex items-center gap-2.5 text-xs text-rose-700 dark:text-rose-300">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                        <span>
+                          <strong>Precio por debajo del costo:</strong> pérdida de{' '}
+                          <strong className="tabular-nums">{formatUSD(Math.abs(gananciaUSD))}</strong> por unidad. Ajusta el precio o elige un margen arriba.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Franja resumen en tiempo real */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                      <div className="p-3 rounded-xl surface-muted flex items-center justify-between sm:block">
+                        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
+                          Ganancia unitaria
+                        </span>
+                        <span
+                          className={`text-sm font-bold tabular-nums mt-0.5 block ${
+                            bajoCosto
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : gananciaUSD > 0
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          {costoNum > 0 && precioBaseNum > 0
+                            ? `${gananciaUSD >= 0 ? '+' : '-'}${formatUSD(Math.abs(gananciaUSD))} (${formRepuesto.margen_detal || 0}%)`
+                            : '—'}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl surface-muted flex items-center justify-between sm:block">
+                        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
+                          Mostrador Divisa ($)
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums mt-0.5 block">
+                          {formatUSD(precioBaseNum)}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-200/80 dark:border-emerald-500/25 flex items-center justify-between sm:block">
+                        <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300 block">
+                          En Bolívares {formRepuesto.aplica_iva ? '(c/IVA 16%)' : '(Exento)'}
+                        </span>
+                        <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums mt-0.5 block">
+                          {formatVES(precioFinalBCVBs)}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="surface-card p-5 space-y-4">
-                    <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
-                      <Boxes className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                      <h3 className="font-heading font-bold text-sm text-slate-900 dark:text-white">
-                        Inventario y Régimen Fiscal
-                      </h3>
+                  {/* Stock, ubicación y régimen fiscal */}
+                  <div className="surface-card p-4 sm:p-5 space-y-3.5">
+                    <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
+                      <div className="flex items-center gap-2">
+                        <Boxes className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <h3 className="font-heading font-bold text-sm text-slate-900 dark:text-white">
+                          Inventario y Régimen Fiscal
+                        </h3>
+                      </div>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums ${
+                          stockNum <= 0
+                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                        }`}
+                      >
+                        {stockNum <= 0 ? 'Sin stock' : `${stockNum} en almacén`}
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
@@ -607,86 +757,99 @@ export default function RepuestoModal({
                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                           Stock actual *
                         </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={formRepuesto.stock}
-                          onChange={(e) =>
-                            setFormRepuesto((prev) => ({ ...prev, stock: e.target.value }))
-                          }
-                          placeholder="0"
-                          className="input-field h-10 px-3 font-mono font-bold"
-                        />
+                        <div className="flex items-center rounded-xl border border-slate-300 dark:border-white/[0.12] bg-white dark:bg-[#090d16] focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-600/15 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormRepuesto((prev) => ({
+                                ...prev,
+                                stock: String(Math.max(0, (parseInt(prev.stock, 10) || 0) - 1)),
+                              }))
+                            }
+                            aria-label="Restar unidad"
+                            className="w-10 h-10 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] border-r border-slate-200 dark:border-white/10 transition-colors cursor-pointer shrink-0"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            value={formRepuesto.stock}
+                            onChange={(e) =>
+                              setFormRepuesto((prev) => ({ ...prev, stock: e.target.value }))
+                            }
+                            placeholder="0"
+                            className="w-full h-10 px-2 bg-transparent text-center font-bold tabular-nums text-sm text-slate-900 dark:text-white focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormRepuesto((prev) => ({
+                                ...prev,
+                                stock: String((parseInt(prev.stock, 10) || 0) + 1),
+                              }))
+                            }
+                            aria-label="Sumar unidad"
+                            className="w-10 h-10 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] border-l border-slate-200 dark:border-white/10 transition-colors cursor-pointer shrink-0"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                           Ubicación física
                         </label>
-                        <input
-                          type="text"
-                          value={formRepuesto.ubicacion_fisica}
-                          onChange={(e) =>
-                            setFormRepuesto((prev) => ({
-                              ...prev,
-                              ubicacion_fisica: e.target.value,
-                            }))
-                          }
-                          placeholder="Ej. Pasillo 2, Estante B"
-                          className="input-field h-10 px-3"
-                        />
+                        <div className="relative">
+                          <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={formRepuesto.ubicacion_fisica}
+                            onChange={(e) =>
+                              setFormRepuesto((prev) => ({
+                                ...prev,
+                                ubicacion_fisica: e.target.value,
+                              }))
+                            }
+                            placeholder="Ej. Pasillo 2, Estante B"
+                            className="input-field h-10 pl-9 pr-3"
+                          />
+                        </div>
                       </div>
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                          Régimen fiscal
+                          Régimen fiscal (IVA)
                         </label>
-                        <label className="h-10 px-3 surface-muted flex items-center justify-between cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={formRepuesto.aplica_iva}
-                              onChange={(e) =>
-                                setFormRepuesto((prev) => ({
-                                  ...prev,
-                                  aplica_iva: e.target.checked,
-                                }))
-                              }
-                              className="w-4 h-4 accent-red-600 cursor-pointer"
-                            />
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                              Aplica IVA
-                            </span>
-                          </div>
-                          <span className="text-[11px] font-mono font-semibold text-slate-500">
-                            {formRepuesto.aplica_iva ? '+16%' : 'Exento'}
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-900 text-white flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-semibold mb-0.5">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Ficha resumen</span>
-                      </div>
-                      <h4 className="font-semibold text-xs sm:text-sm truncate uppercase">
-                        {formRepuesto.descripcion || 'Sin descripción'}
-                      </h4>
-                      <p className="text-[11px] text-slate-400 truncate">
-                        {formRepuesto.marca_producto || 'GENÉRICO'} ·{' '}
-                        {formRepuesto.modelo_vehiculo || 'Universal'} ·{' '}
-                        {formRepuesto.linea || 'General'}
-                      </p>
-                    </div>
-                    <div className="text-right font-mono shrink-0">
-                      <div className="text-base sm:text-lg font-bold text-emerald-400">
-                        {formatUSD(formRepuesto.precio_detal_usd || 0)}
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        {formatVES((parseFloat(formRepuesto.precio_detal_usd) || 0) * tasaNum)}
+                        <div className="grid grid-cols-2 bg-slate-100 dark:bg-[#090d16] p-1 rounded-xl border border-slate-200 dark:border-white/10 h-10">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormRepuesto((prev) => ({ ...prev, aplica_iva: true }))
+                            }
+                            className={`rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                              formRepuesto.aplica_iva
+                                ? 'bg-red-600 text-white shadow-sm'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Con IVA 16%
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormRepuesto((prev) => ({ ...prev, aplica_iva: false }))
+                            }
+                            className={`rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                              !formRepuesto.aplica_iva
+                                ? 'bg-white dark:bg-[#1a2234] text-slate-900 dark:text-white shadow-sm'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Exento 0%
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -696,13 +859,14 @@ export default function RepuestoModal({
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3.5 border-t border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#0e1422] shrink-0">
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <span className="text-xs text-slate-500 dark:text-slate-400">Precio venta:</span>
-              <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-sm">
-                {formatUSD(formRepuesto.precio_detal_usd || 0)}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 self-start sm:self-auto tabular-nums">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Mostrador:</span>
+              <span className="font-bold text-emerald-700 dark:text-emerald-400 text-sm">
+                {formatUSD(precioBaseNum)}
               </span>
-              <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                ({formatVES((parseFloat(formRepuesto.precio_detal_usd) || 0) * tasaNum)})
+              <span className="text-xs text-slate-400">·</span>
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                {formatVES(precioFinalBCVBs)} {formRepuesto.aplica_iva ? '(c/IVA)' : '(Exento)'}
               </span>
             </div>
 

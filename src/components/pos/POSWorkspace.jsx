@@ -44,6 +44,7 @@ import {
 import { obtenerFotoRepuesto } from '../../lib/repuestosImagenes';
 import { desglosarModelosVehiculo } from '../../lib/vehiculosMarcas';
 import ModalZoomRepuesto from '../ModalZoomRepuesto';
+import SearchableCombobox from '../admin/SearchableCombobox';
 
 export default function POSWorkspace({
   cliente,
@@ -480,7 +481,12 @@ export default function POSWorkspace({
     });
 
     setUltimoAgregadoId(prod.id);
-    setTimeout(() => setUltimoAgregadoId(null), 800);
+    setTimeout(() => setUltimoAgregadoId(null), 1200);
+    limpiarBusquedaCatalogo();
+    setMostrarFiltrosAvanzados(false);
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      inputBusquedaRef.current?.focus();
+    }
   };
 
   const modificarCantidad = (index, delta) => {
@@ -971,89 +977,61 @@ export default function POSWorkspace({
 
           {mostrarFiltrosAvanzados && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 p-3.5 surface-muted animate-fade-in">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                  Línea / Sistema
-                </label>
-                <select
-                  value={filtroLinea}
-                  onChange={(e) => {
-                    setFiltroLinea(e.target.value);
-                    setFiltroSublinea('');
-                    setFiltroMarca('');
-                    setFiltroVehiculo('');
-                  }}
-                  className="input-field h-9 px-2.5 text-xs font-medium cursor-pointer"
-                >
-                  <option value="">Todas las líneas</option>
-                  {listaLineas.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableCombobox
+                label="Línea / Sistema"
+                value={filtroLinea}
+                onChange={(val) => {
+                  setFiltroLinea(val);
+                  setFiltroSublinea('');
+                  setFiltroMarca('');
+                  setFiltroVehiculo('');
+                }}
+                options={listaLineas}
+                emptyOptionLabel="Todas las líneas"
+                placeholder="Todas las líneas"
+                compact
+                hideStatusBadge
+              />
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                  Sublínea / Pieza
-                </label>
-                <select
-                  value={filtroSublinea}
-                  onChange={(e) => {
-                    setFiltroSublinea(e.target.value);
-                    setFiltroMarca('');
-                    setFiltroVehiculo('');
-                  }}
-                  className="input-field h-9 px-2.5 text-xs font-medium cursor-pointer"
-                >
-                  <option value="">Todas las sublíneas</option>
-                  {sublineasDisponibles.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableCombobox
+                label="Sublínea / Pieza"
+                value={filtroSublinea}
+                onChange={(val) => {
+                  setFiltroSublinea(val);
+                  setFiltroMarca('');
+                  setFiltroVehiculo('');
+                }}
+                options={sublineasDisponibles}
+                emptyOptionLabel="Todas las sublíneas"
+                placeholder="Todas las sublíneas"
+                compact
+                hideStatusBadge
+              />
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                  Marca del repuesto
-                </label>
-                <select
-                  value={filtroMarca}
-                  onChange={(e) => {
-                    setFiltroMarca(e.target.value);
-                    setFiltroVehiculo('');
-                  }}
-                  className="input-field h-9 px-2.5 text-xs font-medium cursor-pointer"
-                >
-                  <option value="">Todas las marcas</option>
-                  {marcasDisponibles.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableCombobox
+                label="Marca del repuesto"
+                value={filtroMarca}
+                onChange={(val) => {
+                  setFiltroMarca(val);
+                  setFiltroVehiculo('');
+                }}
+                options={marcasDisponibles}
+                emptyOptionLabel="Todas las marcas"
+                placeholder="Todas las marcas"
+                compact
+                hideStatusBadge
+              />
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                  Modelo del vehículo
-                </label>
-                <select
-                  value={filtroVehiculo}
-                  onChange={(e) => setFiltroVehiculo(e.target.value)}
-                  className="input-field h-9 px-2.5 text-xs font-medium cursor-pointer"
-                >
-                  <option value="">Todos los modelos</option>
-                  {vehiculosDisponibles.map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableCombobox
+                label="Modelo del vehículo"
+                value={filtroVehiculo}
+                onChange={setFiltroVehiculo}
+                options={vehiculosDisponibles}
+                emptyOptionLabel="Todos los modelos"
+                placeholder="Todos los modelos"
+                compact
+                hideStatusBadge
+              />
             </div>
           )}
 
@@ -1221,10 +1199,15 @@ export default function POSWorkspace({
             <div className="space-y-2">
               {items.map((it, idx) => {
                 const esManual = it.codigo_corto === 'MANUAL';
+                const esRecienAgregado = Boolean(it.producto_id && ultimoAgregadoId === it.producto_id);
                 return (
                   <div
                     key={it.id || idx}
-                    className="p-3 rounded-xl bg-slate-50/90 dark:bg-[#090d16] border border-slate-200/90 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    className={`p-3 rounded-xl border transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      esRecienAgregado
+                        ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/30'
+                        : 'bg-slate-50/90 dark:bg-[#090d16] border-slate-200/90 dark:border-white/[0.08]'
+                    }`}
                   >
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-1.5 flex-wrap">

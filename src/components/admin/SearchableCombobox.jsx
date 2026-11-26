@@ -25,12 +25,15 @@ export default function SearchableCombobox({
   onChange,
   options = [],
   placeholder = 'Buscar o escribir...',
+  emptyOptionLabel = null,
   getLabel = defaultGetLabel,
   getFilterText = defaultGetFilterText,
   onCreateNew,
   createNewLabel = defaultCreateNewLabel,
   required = false,
   uppercase = false,
+  compact = false,
+  hideStatusBadge = false,
 }) {
   const [abierto, setAbierto] = useState(false);
   const [filtroTexto, setFiltroTexto] = useState(() => (value ? getLabel(value) : ''));
@@ -41,6 +44,7 @@ export default function SearchableCombobox({
   const triggerRef = useRef(null);
   const inputRef = useRef(null);
   const menuRef = useRef(null);
+  const prevValueRef = useRef(value);
 
   const getLabelRef = useRef(getLabel);
   getLabelRef.current = getLabel;
@@ -49,10 +53,16 @@ export default function SearchableCombobox({
   getFilterTextRef.current = getFilterText;
 
   useEffect(() => {
-    if (!haTipeado) {
+    if (prevValueRef.current !== value) {
+      prevValueRef.current = value;
+      setHaTipeado(false);
+      setFiltroTexto(value ? getLabelRef.current(value) : '');
+      return;
+    }
+    if (!haTipeado && !abierto) {
       setFiltroTexto(value ? getLabelRef.current(value) : '');
     }
-  }, [value, haTipeado]);
+  }, [value, haTipeado, abierto]);
 
   const calcularPosicionMenu = useCallback(() => {
     const el = triggerRef.current;
@@ -71,7 +81,7 @@ export default function SearchableCombobox({
       Math.min(256, abrirArriba ? espacioArriba - 6 : espacioAbajo - 6)
     );
 
-    const width = Math.min(rect.width, vw - margin * 2);
+    const width = Math.min(Math.max(rect.width, 240), vw - margin * 2);
     const left = Math.max(margin, Math.min(rect.left, vw - width - margin));
 
     setMenuPos({
@@ -164,7 +174,7 @@ export default function SearchableCombobox({
 
   const seleccionarOpcion = (opt) => {
     onChange(opt);
-    setFiltroTexto(getLabelRef.current(opt));
+    setFiltroTexto(opt ? getLabelRef.current(opt) : '');
     setHaTipeado(false);
     setAbierto(false);
   };
@@ -174,6 +184,9 @@ export default function SearchableCombobox({
     setFiltroTexto(val);
     setHaTipeado(true);
     setAbierto(true);
+    if (!val && emptyOptionLabel && value) {
+      onChange('');
+    }
   };
 
   const handleCrearNuevo = (nuevoTexto) => {
@@ -193,7 +206,9 @@ export default function SearchableCombobox({
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (opcionesFiltradas.length > 0) {
+      if (emptyOptionLabel && !filtroTexto.trim()) {
+        seleccionarOpcion('');
+      } else if (opcionesFiltradas.length > 0) {
         seleccionarOpcion(opcionesFiltradas[0]);
       } else if (onCreateNew && filtroTexto.trim()) {
         handleCrearNuevo(filtroTexto.trim());
@@ -247,6 +262,21 @@ export default function SearchableCombobox({
         }}
         className="overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-2xl p-1.5 text-xs space-y-0.5 animate-fade-in"
       >
+        {emptyOptionLabel && (!haTipeado || !filtroTexto.trim()) && (
+          <button
+            type="button"
+            onClick={() => seleccionarOpcion('')}
+            className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors border-b border-slate-100 dark:border-white/[0.06] mb-1 ${
+              !value
+                ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+            }`}
+          >
+            <span className="truncate">{emptyOptionLabel}</span>
+            {!value && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
+          </button>
+        )}
+
         {opcionesFiltradas.length > 0 ? (
           <>
             {opcionesFiltradas.map((opt) => {
@@ -304,30 +334,54 @@ export default function SearchableCombobox({
   return (
     <div className="relative" ref={containerRef}>
       {label && (
-        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between gap-2">
+        <label
+          className={`flex items-center justify-between gap-2 font-semibold ${
+            compact
+              ? 'text-[11px] text-slate-600 dark:text-slate-400 mb-1'
+              : 'text-xs text-slate-700 dark:text-slate-300 mb-1.5'
+          }`}
+        >
           <span>{label}</span>
-          {value ? (
-            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              Seleccionado
-            </span>
-          ) : required ? (
-            <span className="text-[11px] text-amber-600 dark:text-amber-400">Obligatorio</span>
-          ) : null}
+          {!hideStatusBadge &&
+            (value ? (
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                Seleccionado
+              </span>
+            ) : required ? (
+              <span className="text-[11px] text-amber-600 dark:text-amber-400">Obligatorio</span>
+            ) : null)}
         </label>
       )}
 
       <div ref={triggerRef} className="relative flex items-center">
-        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
+        <Search
+          className={`w-3.5 h-3.5 text-slate-400 absolute pointer-events-none ${
+            compact ? 'left-2.5' : 'left-3'
+          }`}
+        />
         <input
           ref={inputRef}
           type="text"
           value={filtroTexto}
           onChange={handleInputChange}
-          onFocus={() => setAbierto(true)}
+          onFocus={(e) => {
+            setAbierto(true);
+            if (value && !haTipeado) {
+              e.target.select();
+            }
+          }}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className={`input-field h-10 pl-9 pr-14 font-semibold ${
-            abierto ? 'border-red-500 ring-2 ring-red-500/15' : ''
+          placeholder={placeholder || emptyOptionLabel || 'Buscar o escribir...'}
+          className={`input-field ${
+            compact
+              ? 'h-9 pl-8 pr-12 text-xs font-medium'
+              : 'h-10 pl-9 pr-14 font-semibold'
+          } ${
+            abierto
+              ? 'border-red-500 ring-2 ring-red-500/15'
+              : compact && value
+                ? 'border-red-500 ring-1 ring-red-500/20'
+                : ''
           }`}
         />
 
