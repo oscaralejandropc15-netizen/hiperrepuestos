@@ -23,6 +23,10 @@ import {
   obtenerMarcaVehiculo,
   desglosarModelosVehiculo,
   contarRepuestosPorModelo,
+  extraerMarcaYModeloDeTexto,
+  guardarMarcaVehiculoPersonalizada,
+  renombrarMarcaVehiculoPersonalizada,
+  eliminarMarcaVehiculoPersonalizada,
 } from '../lib/vehiculosMarcas';
 import ModalZoomRepuesto from './ModalZoomRepuesto';
 import ToastNotification from './ui/ToastNotification';
@@ -184,6 +188,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
     tipo: 'linea',
     valor: '',
     lineaPadre: '',
+    marcaVehiculo: '',
   });
   const [modalEditar, setModalEditar] = useState({
     abierto: false,
@@ -613,18 +618,43 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
     return val;
   };
 
-  const agregarNuevoModelo = (nombre) => {
-    const val = (typeof nombre === 'string' ? nombre : inputTabNuevoModelo || '').trim();
+  const agregarNuevoModelo = (nombre, marcaOpcional = '') => {
+    const raw = typeof nombre === 'string' ? nombre : inputTabNuevoModelo || '';
+    const { marca, modelo: val } = extraerMarcaYModeloDeTexto(raw, marcaOpcional);
+
     if (!val) {
       mostrarNotificacion('Escribe el modelo de vehículo antes de registrarlo.', 'warning');
       inputModeloRef.current?.focus();
       return '';
     }
+
+    const existente = listaModelos.find((m) => m.toLowerCase() === val.toLowerCase());
+    if (existente) {
+      const marcaActual = obtenerMarcaVehiculo(existente);
+      if (marca && marca !== 'Otras Marcas' && marcaActual === 'Otras Marcas') {
+        guardarMarcaVehiculoPersonalizada(existente, marca);
+        setUltimoItemCreado({ tipo: 'modelo', valor: existente });
+        mostrarNotificacion(`Marca "${marca}" asignada al vehículo "${existente}".`, 'success');
+      } else {
+        mostrarNotificacion(
+          `El modelo "${existente}" ya está registrado bajo ${marcaActual}.`,
+          'warning'
+        );
+      }
+      return existente;
+    }
+
+    if (marca && marca !== 'Otras Marcas') {
+      guardarMarcaVehiculoPersonalizada(val, marca);
+    }
     if (!modelosAdicionales.map((m) => m.toLowerCase()).includes(val.toLowerCase())) {
       setModelosAdicionales((prev) => [...prev, val]);
     }
     setUltimoItemCreado({ tipo: 'modelo', valor: val });
-    mostrarNotificacion(`Vehículo "${val}" registrado.`, 'success');
+    mostrarNotificacion(
+      marca ? `Vehículo "${marca} · ${val}" registrado.` : `Vehículo "${val}" registrado.`,
+      'success'
+    );
     return val;
   };
 
@@ -692,6 +722,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
           .update({ marca_producto: nuevoUpper })
           .eq('marca_producto', nombreActual);
       } else if (tipo === 'modelo') {
+        renombrarMarcaVehiculoPersonalizada(nombreActual, nuevo);
         setRenombresModelos((prev) => ({ ...prev, [nombreActual]: nuevo }));
         setModelosAdicionales((prev) =>
           prev.map((m) => (m.toLowerCase() === nombreActual.toLowerCase() ? nuevo : m))
@@ -767,6 +798,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
             .eq('marca_producto', nombre);
         }
       } else if (tipo === 'modelo') {
+        eliminarMarcaVehiculoPersonalizada(nombre);
         setModelosEliminadas((prev) => [
           ...prev.filter((m) => m.toLowerCase() !== nombre.toLowerCase()),
           nombre,
@@ -835,7 +867,13 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
             conteoAfectados: 0,
           });
         } else if (modalRapido.abierto) {
-          setModalRapido({ abierto: false, tipo: 'linea', valor: '', lineaPadre: '' });
+          setModalRapido({
+            abierto: false,
+            tipo: 'linea',
+            valor: '',
+            lineaPadre: '',
+            marcaVehiculo: '',
+          });
         } else if (modalRepuestoAbierto) {
           setModalRepuestoAbierto(false);
         }
@@ -1383,7 +1421,6 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
         <ClasificacionesTab
           tabActiva={tabActiva}
           setTabActiva={setTabActiva}
-          onNuevoRepuesto={abrirCrearRepuesto}
           lineasFiltradas={lineasFiltradas}
           conteoPorLinea={conteoPorLinea}
           lineaActivaMaster={lineaActivaMaster}
@@ -1500,6 +1537,7 @@ export default function AdminDashboard({ tasaBCV, onVolverAlMostrador }) {
         setModalRapido={setModalRapido}
         lineaActivaMaster={lineaActivaMaster}
         setLineaActivaMaster={setLineaActivaMaster}
+        listaModelos={listaModelos}
         agregarNuevaLinea={agregarNuevaLinea}
         agregarNuevaSublinea={agregarNuevaSublinea}
         agregarNuevaMarca={agregarNuevaMarca}

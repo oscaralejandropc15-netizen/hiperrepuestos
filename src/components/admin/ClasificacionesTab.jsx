@@ -11,13 +11,12 @@ import {
   ArrowRight,
   ChevronRight,
 } from 'lucide-react';
-import { obtenerMarcaVehiculo } from '../../lib/vehiculosMarcas';
+import { obtenerMarcaVehiculo, extraerMarcaYModeloDeTexto } from '../../lib/vehiculosMarcas';
 import PaginationBar from '../ui/PaginationBar';
 
 export default function ClasificacionesTab({
   tabActiva,
   setTabActiva,
-  onNuevoRepuesto,
   lineasFiltradas,
   busquedaLineas,
   setBusquedaLineas,
@@ -76,29 +75,18 @@ export default function ClasificacionesTab({
   if (tabActiva === 'lineas' || tabActiva === 'clasificaciones') {
     return (
       <div className="space-y-4">
-        <div className="surface-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                Sistemas y Líneas Automotrices
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Selecciona una línea para gestionar sus piezas específicas
-              </p>
-            </div>
+        <div className="surface-card p-4 sm:p-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+            <Layers className="w-5 h-5" />
           </div>
-
-          <button
-            type="button"
-            onClick={onNuevoRepuesto}
-            className="min-h-[40px] px-4 btn-gradient-red text-xs font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nuevo repuesto</span>
-          </button>
+          <div>
+            <h2 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+              Sistemas y Líneas Automotrices
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Selecciona una línea para gestionar sus piezas específicas
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
@@ -432,29 +420,18 @@ export default function ClasificacionesTab({
   if (tabActiva === 'marcas') {
     return (
       <div className="space-y-4">
-        <div className="surface-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
-              <Tag className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                Marcas de Fabricantes
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Catálogo maestro de fabricantes disponibles en mostrador
-              </p>
-            </div>
+        <div className="surface-card p-4 sm:p-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+            <Tag className="w-5 h-5" />
           </div>
-
-          <button
-            type="button"
-            onClick={onNuevoRepuesto}
-            className="min-h-[40px] px-4 btn-gradient-red text-xs font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nuevo repuesto</span>
-          </button>
+          <div>
+            <h2 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+              Marcas de Fabricantes
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Catálogo maestro de fabricantes disponibles en mostrador
+            </p>
+          </div>
         </div>
 
         <div className="surface-card p-4 sm:p-5">
@@ -596,29 +573,18 @@ export default function ClasificacionesTab({
   // Modelos de vehículos
   return (
     <div className="space-y-4">
-      <div className="surface-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
-            <Car className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-              Vehículos y Modelos Compatibles
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Administra los modelos de vehículos para filtrar y clasificar repuestos
-            </p>
-          </div>
+      <div className="surface-card p-4 sm:p-5 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+          <Car className="w-5 h-5" />
         </div>
-
-        <button
-          type="button"
-          onClick={onNuevoRepuesto}
-          className="min-h-[40px] px-4 btn-gradient-red text-xs font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nuevo repuesto</span>
-        </button>
+        <div>
+          <h2 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+            Vehículos y Modelos Compatibles
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Administra los modelos de vehículos para filtrar y clasificar repuestos
+          </p>
+        </div>
       </div>
 
       <div className="surface-card p-4 sm:p-5">
@@ -649,10 +615,30 @@ export default function ClasificacionesTab({
               e.preventDefault();
               const val = inputTabNuevoModelo.trim();
               if (!val) {
-                setModalRapido({ abierto: true, tipo: 'modelo', valor: '', lineaPadre: '' });
+                setModalRapido({
+                  abierto: true,
+                  tipo: 'modelo',
+                  valor: '',
+                  lineaPadre: '',
+                  marcaVehiculo: '',
+                  marcaManual: false,
+                });
                 return;
               }
-              agregarNuevoModelo(val);
+              const parsed = extraerMarcaYModeloDeTexto(val);
+              if (!parsed.marca) {
+                setModalRapido({
+                  abierto: true,
+                  tipo: 'modelo',
+                  valor: parsed.modelo,
+                  lineaPadre: '',
+                  marcaVehiculo: '',
+                  marcaManual: false,
+                });
+                setInputTabNuevoModelo('');
+                return;
+              }
+              agregarNuevoModelo(parsed.modelo, parsed.marca);
               setInputTabNuevoModelo('');
             }}
             className="md:col-span-7 flex items-center gap-2"
@@ -662,7 +648,7 @@ export default function ClasificacionesTab({
               type="text"
               value={inputTabNuevoModelo}
               onChange={(e) => setInputTabNuevoModelo(e.target.value)}
-              placeholder="Registrar nuevo vehículo (ej. Toyota Yaris)..."
+              placeholder="Nuevo modelo sin repetir marca (ej. Corolla, Aveo, Hunter)..."
               className="input-field h-10 px-3.5 flex-1"
             />
             <button

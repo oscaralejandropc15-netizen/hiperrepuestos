@@ -34,6 +34,7 @@ export default function SearchableCombobox({
   uppercase = false,
   compact = false,
   hideStatusBadge = false,
+  commitNewOnBlur = false,
 }) {
   const [abierto, setAbierto] = useState(false);
   const [filtroTexto, setFiltroTexto] = useState(() => (value ? getLabel(value) : ''));
@@ -119,41 +120,52 @@ export default function SearchableCombobox({
     };
   }, [abierto, calcularPosicionMenu]);
 
+  const confirmarTextoAlSalir = useCallback(() => {
+    setAbierto(false);
+    if (!haTipeado) {
+      setFiltroTexto(value ? getLabelRef.current(value) : '');
+      return;
+    }
+    const textoLimpio = filtroTexto.trim();
+    if (!textoLimpio) {
+      onChange('');
+      setFiltroTexto('');
+    } else {
+      const qNorm = normalizarBusqueda(textoLimpio);
+      const match = options.find(
+        (opt) =>
+          normalizarBusqueda(opt) === qNorm ||
+          normalizarBusqueda(getLabelRef.current(opt)) === qNorm
+      );
+      if (match) {
+        onChange(match);
+        setFiltroTexto(getLabelRef.current(match));
+      } else if (onCreateNew && commitNewOnBlur) {
+        const creado = onCreateNew(uppercase ? textoLimpio.toUpperCase() : textoLimpio);
+        if (creado) {
+          onChange(creado);
+          setFiltroTexto(getLabelRef.current(creado));
+        } else {
+          setFiltroTexto(value ? getLabelRef.current(value) : '');
+        }
+      } else {
+        setFiltroTexto(value ? getLabelRef.current(value) : '');
+      }
+    }
+    setHaTipeado(false);
+  }, [value, haTipeado, filtroTexto, options, onChange, onCreateNew, commitNewOnBlur, uppercase]);
+
   useEffect(() => {
     function handlePointerOutside(e) {
       const insideTrigger = containerRef.current && containerRef.current.contains(e.target);
       const insideMenu = menuRef.current && menuRef.current.contains(e.target);
       if (insideTrigger || insideMenu) return;
-
-      setAbierto(false);
-      if (haTipeado) {
-        const textoLimpio = filtroTexto.trim();
-        if (!textoLimpio) {
-          onChange('');
-          setFiltroTexto('');
-        } else {
-          const qNorm = normalizarBusqueda(textoLimpio);
-          const match = options.find(
-            (opt) =>
-              normalizarBusqueda(opt) === qNorm ||
-              normalizarBusqueda(getLabelRef.current(opt)) === qNorm
-          );
-          if (match) {
-            onChange(match);
-            setFiltroTexto(getLabelRef.current(match));
-          } else {
-            setFiltroTexto(value ? getLabelRef.current(value) : '');
-          }
-        }
-        setHaTipeado(false);
-      } else {
-        setFiltroTexto(value ? getLabelRef.current(value) : '');
-      }
+      confirmarTextoAlSalir();
     }
 
     document.addEventListener('pointerdown', handlePointerOutside);
     return () => document.removeEventListener('pointerdown', handlePointerOutside);
-  }, [value, haTipeado, filtroTexto, options, onChange]);
+  }, [confirmarTextoAlSalir]);
 
   const opcionesFiltradas = useMemo(() => {
     if (!haTipeado) return options;
@@ -215,6 +227,8 @@ export default function SearchableCombobox({
       } else {
         setAbierto(false);
       }
+    } else if (e.key === 'Tab' && abierto) {
+      confirmarTextoAlSalir();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();

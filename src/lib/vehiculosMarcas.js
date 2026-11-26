@@ -262,31 +262,175 @@ export const MARCAS_POR_VEHICULO = {
   'stylus': 'Chevrolet'
 };
 
-/**
- * Detecta automáticamente la marca fabricante de un modelo automotriz
- */
-export function obtenerMarcaVehiculo(nombreModelo) {
-  if (!nombreModelo) return 'General';
-  const clean = nombreModelo.toLowerCase().trim();
+export const MARCAS_AUTOMOTRICES_BASE = [
+  'BMW',
+  'BYD',
+  'Changan',
+  'Chery',
+  'Chevrolet',
+  'Chrysler',
+  'Citroën',
+  'Daewoo',
+  'Daihatsu',
+  'Dodge',
+  'Dongfeng',
+  'Fiat',
+  'Ford',
+  'Great Wall',
+  'Haval',
+  'Honda',
+  'Hyundai',
+  'Isuzu',
+  'JAC',
+  'Jeep',
+  'Kia',
+  'Land Rover',
+  'Mazda',
+  'Mercedes-Benz',
+  'MG',
+  'Mitsubishi',
+  'Nissan',
+  'Peugeot',
+  'Renault',
+  'Suzuki',
+  'Toyota',
+  'Venirauto',
+  'Volkswagen',
+];
 
-  // 1. Si ya viene con el prefijo de la marca
-  const marcasPrincipales = [
-    'Toyota', 'Chevrolet', 'Ford', 'Hyundai', 'Chery', 'Mitsubishi', 
-    'Nissan', 'Renault', 'Honda', 'Mazda', 'Jeep', 'Kia', 
-    'Volkswagen', 'Fiat', 'Dodge', 'Daewoo', 'Venirauto'
-  ];
-  for (const m of marcasPrincipales) {
+const CUSTOM_VEHICULO_MARCAS_KEY = 'familycar_custom_vehiculo_marcas';
+let customMarcasVehiculosCache = null;
+
+function getCustomMarcasMap() {
+  if (customMarcasVehiculosCache !== null) return customMarcasVehiculosCache;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(CUSTOM_VEHICULO_MARCAS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      customMarcasVehiculosCache = parsed && typeof parsed === 'object' ? parsed : {};
+      return customMarcasVehiculosCache;
+    }
+  } catch {
+    // Ignorar errores de almacenamiento restringido
+  }
+  customMarcasVehiculosCache = {};
+  return customMarcasVehiculosCache;
+}
+
+function persistCustomMarcasMap(nextMap) {
+  customMarcasVehiculosCache = nextMap;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(CUSTOM_VEHICULO_MARCAS_KEY, JSON.stringify(nextMap));
+    }
+  } catch {
+    // Ignorar errores de almacenamiento restringido
+  }
+}
+
+export function guardarMarcaVehiculoPersonalizada(modelo, marca) {
+  const mKey = String(modelo || '').toLowerCase().trim();
+  const brand = String(marca || '').trim();
+  if (!mKey || !brand || brand === 'Otras Marcas' || brand === 'General') return;
+  const current = getCustomMarcasMap();
+  if (current[mKey] === brand) return;
+  persistCustomMarcasMap({ ...current, [mKey]: brand });
+}
+
+export function renombrarMarcaVehiculoPersonalizada(nombreAnterior, nombreNuevo) {
+  const oldKey = String(nombreAnterior || '').toLowerCase().trim();
+  const newKey = String(nombreNuevo || '').toLowerCase().trim();
+  if (!oldKey || !newKey || oldKey === newKey) return;
+  const current = { ...getCustomMarcasMap() };
+  const marcaPrevia = current[oldKey] || inferirMarcaVehiculoConocida(nombreAnterior);
+  delete current[oldKey];
+  if (marcaPrevia && !MARCAS_POR_VEHICULO[newKey]) {
+    current[newKey] = marcaPrevia;
+  }
+  persistCustomMarcasMap(current);
+}
+
+export function eliminarMarcaVehiculoPersonalizada(modelo) {
+  const mKey = String(modelo || '').toLowerCase().trim();
+  if (!mKey) return;
+  const current = getCustomMarcasMap();
+  if (!(mKey in current)) return;
+  const next = { ...current };
+  delete next[mKey];
+  persistCustomMarcasMap(next);
+}
+
+export function getListaMarcasAutomotrices() {
+  const customBrands = Object.values(getCustomMarcasMap()).filter(Boolean);
+  return Array.from(new Set([...MARCAS_AUTOMOTRICES_BASE, ...customBrands])).sort((a, b) =>
+    a.localeCompare(b)
+  );
+}
+
+/**
+ * Detecta la marca fabricante conocida de un modelo (retorna '' si no es reconocible).
+ */
+export function inferirMarcaVehiculoConocida(nombreModelo) {
+  if (!nombreModelo) return '';
+  const clean = String(nombreModelo).toLowerCase().trim();
+  if (!clean || clean === 'universal' || clean === 'general') return '';
+
+  const customMap = getCustomMarcasMap();
+  if (customMap[clean]) return customMap[clean];
+
+  const marcasOrdenadas = getListaMarcasAutomotrices().sort((a, b) => b.length - a.length);
+  for (const m of marcasOrdenadas) {
     if (clean.startsWith(m.toLowerCase() + ' ')) return m;
   }
 
-  // 2. Coincidencia exacta o contenida en diccionario
   for (const [key, marca] of Object.entries(MARCAS_POR_VEHICULO)) {
     if (clean === key || clean.includes(key)) {
       return marca;
     }
   }
 
-  return 'Otras Marcas';
+  return '';
+}
+
+/**
+ * Separa marca fabricante y modelo limpio sin duplicar prefijos (ej. "Toyota Corolla" -> marca: "Toyota", modelo: "Corolla").
+ */
+export function extraerMarcaYModeloDeTexto(rawTexto, marcaExplicita = '') {
+  let modelo = String(rawTexto || '').trim();
+  let marca = String(marcaExplicita || '').trim();
+
+  if (marca) {
+    const marcaLower = marca.toLowerCase();
+    if (modelo.toLowerCase().startsWith(`${marcaLower} `)) {
+      modelo = modelo.slice(marca.length).trim();
+    }
+    return { marca, modelo };
+  }
+
+  const marcasOrdenadas = getListaMarcasAutomotrices().sort((a, b) => b.length - a.length);
+  const lower = modelo.toLowerCase();
+  for (const m of marcasOrdenadas) {
+    const pref = `${m.toLowerCase()} `;
+    if (lower.startsWith(pref)) {
+      const restante = modelo.slice(m.length).trim();
+      if (restante) {
+        return { marca: m, modelo: restante };
+      }
+    }
+  }
+
+  return {
+    marca: inferirMarcaVehiculoConocida(modelo),
+    modelo,
+  };
+}
+
+/**
+ * Detecta automáticamente la marca fabricante de un modelo automotriz
+ */
+export function obtenerMarcaVehiculo(nombreModelo) {
+  if (!nombreModelo) return 'General';
+  return inferirMarcaVehiculoConocida(nombreModelo) || 'Otras Marcas';
 }
 
 /**
