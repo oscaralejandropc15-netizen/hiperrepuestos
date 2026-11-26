@@ -35,8 +35,8 @@ export default {
       boxShadow: {
         'card': '0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04)',
         'card-hover': '0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -4px rgba(15, 23, 42, 0.04)',
-        'brand': '0 6px 20px -4px rgba(220, 38, 38, 0.35)',
-        'emerald': '0 6px 20px -4px rgba(5, 150, 105, 0.3)',
+        'brand': '0 1px 3px 0 rgba(15, 23, 42, 0.14), 0 1px 2px -1px rgba(15, 23, 42, 0.08)',
+        'emerald': '0 1px 3px 0 rgba(15, 23, 42, 0.14), 0 1px 2px -1px rgba(15, 23, 42, 0.08)',
       },
       animation: {
         'fade-in': 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',

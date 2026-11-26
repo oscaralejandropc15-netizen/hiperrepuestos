@@ -445,8 +445,8 @@ export default function HistorialPage({ onVolverAlFacturador, onVerGuia, onGuiaE
                       </div>
                     </div>
 
-                    <div className="flex items-end justify-between pt-2.5 border-t border-slate-200/80 dark:border-white/[0.06]">
-                      <div className="tabular-nums">
+                    <div className="flex flex-wrap items-end justify-between gap-2 pt-2.5 border-t border-slate-200/80 dark:border-white/[0.06]">
+                      <div className="tabular-nums min-w-0">
                         <span className="text-base font-bold text-emerald-700 dark:text-emerald-400 block">
                           {formatVES(guia.total_bs)}
                         </span>

@@ -180,8 +180,8 @@ export default function CuentasCobrarTab({
                       </span>
                     </div>
 
-                    <div className="flex items-end justify-between pt-2.5 border-t border-slate-200/80 dark:border-white/[0.06]">
-                      <div className="font-mono text-xs space-y-0.5">
+                    <div className="flex flex-wrap items-end justify-between gap-2 pt-2.5 border-t border-slate-200/80 dark:border-white/[0.06]">
+                      <div className="font-mono text-xs space-y-0.5 min-w-0">
                         <div className="text-slate-500 dark:text-slate-400">
                           Total: {formatUSD(c.monto_total_usd || 0)} · Abonado:{' '}
                           <span className="text-emerald-700 dark:text-emerald-400 font-semibold">

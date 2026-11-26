@@ -136,7 +136,7 @@ export default function AppLayout({
                   onClick={() => setVista(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all duration-150 cursor-pointer group ${
                     activo
-                      ? 'bg-red-600 text-white shadow-brand'
+                      ? 'bg-red-600 text-white shadow-sm'
                       : 'text-slate-300 hover:text-white hover:bg-white/[0.06]'
                   }`}
                 >
@@ -197,8 +197,8 @@ export default function AppLayout({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                  <span className="text-[11px] font-medium text-emerald-400">En línea</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-[11px] font-medium text-slate-300">En línea</span>
                 </div>
                 <p className="text-xs font-semibold text-white truncate">{userName}</p>
               </div>
@@ -220,8 +220,8 @@ export default function AppLayout({
       {/* Contenedor principal */}
       <div className="flex-1 flex flex-col min-w-0 pb-24 lg:pb-8">
         {/* Topbar */}
-        <header className="no-print sticky top-0 z-30 h-16 bg-white/95 dark:bg-[#0e1422]/95 backdrop-blur-md border-b border-slate-200/90 dark:border-white/[0.08] px-2.5 sm:px-6 flex items-center justify-between gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+        <header className="no-print sticky top-0 z-30 h-16 bg-white/95 dark:bg-[#0e1422]/95 backdrop-blur-md border-b border-slate-200/90 dark:border-white/[0.08] px-2.5 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
             <div className="flex items-center gap-2 lg:hidden min-w-0">
               <img
                 src="/logo.png"
@@ -253,7 +253,7 @@ export default function AppLayout({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
             {horaActual && (
               <span className="hidden xl:inline-block text-xs font-medium text-slate-500 dark:text-slate-400 tabular-nums mr-1">
                 {horaActual}
@@ -261,8 +261,8 @@ export default function AppLayout({
             )}
 
             {/* Tasa BCV */}
-            <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 h-9 sm:h-10 bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/25 rounded-xl">
-              <img src="/bcv_logo.svg" alt="BCV" className="w-3.5 h-3.5 sm:w-4 sm:h-4 object-contain shrink-0" />
+            <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 h-8 sm:h-10 bg-slate-50 dark:bg-[#090d16] border border-slate-200 dark:border-white/[0.1] rounded-xl">
+              <img src="/bcv_logo.svg" alt="BCV" className="hidden min-[380px]:block w-3.5 h-3.5 sm:w-4 sm:h-4 object-contain shrink-0" />
               <label htmlFor="topbar-bcv-rate" className="sr-only">
                 Tasa oficial BCV
               </label>
@@ -278,10 +278,10 @@ export default function AppLayout({
                     if (!isNaN(n) && n > 0) setTasaBCV(n.toFixed(2));
                   }
                 }}
-                className="w-14 sm:w-20 bg-transparent text-right font-bold tabular-nums text-xs sm:text-sm text-emerald-800 dark:text-emerald-300 focus:outline-none"
+                className="w-12 sm:w-20 bg-transparent text-right font-bold tabular-nums text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 focus:outline-none"
                 title="Tasa oficial BCV (editable)"
               />
-              <span className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300">
                 Bs.
               </span>
               {onActualizarBCV && (
@@ -291,7 +291,7 @@ export default function AppLayout({
                   disabled={cargandoBCV}
                   aria-label="Actualizar tasa BCV"
                   title="Actualizar tasa BCV oficial"
-                  className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded-md transition-colors cursor-pointer"
+                  className="p-0.5 sm:p-1 text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 hover:bg-slate-200/70 dark:hover:bg-white/[0.08] rounded-md transition-colors cursor-pointer"
                 >
                   <RotateCcw className={`w-3.5 h-3.5 ${cargandoBCV ? 'animate-spin' : ''}`} />
                 </button>
@@ -314,7 +314,7 @@ export default function AppLayout({
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
               title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] transition-colors cursor-pointer"
+              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.08] transition-colors cursor-pointer"
             >
               {theme === 'dark' ? (
                 <Sun className="w-4 h-4 text-amber-400" />
@@ -329,7 +329,7 @@ export default function AppLayout({
               onClick={onCerrarSesion}
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
-              className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 cursor-pointer"
+              className="lg:hidden w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>

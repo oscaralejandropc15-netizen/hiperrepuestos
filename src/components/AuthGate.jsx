@@ -53,37 +53,26 @@ export default function AuthGate({ onAuthSuccess }) {
 
   return (
     <div className="min-h-[100dvh] flex flex-col lg:grid lg:grid-cols-12 bg-[#f1f5f9] dark:bg-[#070a11] text-slate-900 dark:text-slate-100">
-      {/* Panel izquierdo limpio y minimalista (Laptop / Escritorio) */}
-      <aside className="hidden lg:flex lg:col-span-6 xl:col-span-7 relative overflow-hidden bg-[#0b1120] text-slate-100 flex-col justify-between p-10 xl:p-14 border-r border-slate-800/80">
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 20% 28%, rgba(220, 38, 38, 0.22), transparent 46%), radial-gradient(circle at 80% 82%, rgba(225, 29, 72, 0.10), transparent 48%), radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)',
-            backgroundSize: '100% 100%, 100% 100%, 26px 26px',
-          }}
-        />
-        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-red-500/40 to-transparent" />
-
+      {/* Panel izquierdo limpio y sobrio (Laptop / Escritorio) */}
+      <aside className="hidden lg:flex lg:col-span-6 xl:col-span-7 relative overflow-hidden bg-[#0b1120] text-slate-100 flex-col justify-between p-10 xl:p-14 border-r border-slate-800">
         {/* Indicador superior discreto */}
         <div className="relative z-10 flex items-center justify-between text-xs text-slate-400">
           <span className="font-semibold tracking-wide text-slate-300 uppercase text-[11px]">
             Familycar · POS
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/10 text-slate-300 text-[11px] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             En línea
           </span>
         </div>
 
         {/* Centro visual despejado: Logo protagonista + título corto + 3 chips */}
         <div className="relative z-10 max-w-md my-auto space-y-6">
-          <div className="inline-flex relative">
-            <div className="absolute -inset-3 rounded-full bg-red-600/20 blur-xl" />
+          <div className="inline-flex">
             <img
               src="/logo.png"
               alt="Logo Familycar"
-              className="relative w-20 h-20 xl:w-24 xl:h-24 rounded-full object-contain border border-white/20 bg-black p-1 shadow-2xl"
+              className="w-20 h-20 xl:w-24 xl:h-24 rounded-full object-contain border border-white/15 bg-black p-1 shadow-md"
             />
           </div>
 

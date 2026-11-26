@@ -42,7 +42,7 @@ export default function ConfirmModal({
     },
     primary: {
       iconBg: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
-      btn: 'bg-red-600 hover:bg-red-700 text-white shadow-brand',
+      btn: 'bg-red-600 hover:bg-red-700 text-white shadow-sm',
       Icon: CheckCircle2,
     },
   }[variant] || {

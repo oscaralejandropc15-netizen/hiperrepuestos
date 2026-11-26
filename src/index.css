@@ -37,9 +37,7 @@
 
   .dark body {
     background-color: #070a11;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -15%, rgba(220, 38, 38, 0.08) 0%, transparent 60%);
-    background-attachment: fixed;
+    background-image: none;
     color: #f8fafc;
   }
 
@@ -141,15 +139,15 @@
   }
 
   .btn-primary {
-    @apply bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold rounded-xl shadow-brand transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer;
+    @apply bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold rounded-xl shadow-sm transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer;
   }
 
   .btn-gradient-red {
-    @apply bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-brand transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-xl;
+    @apply bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-xl;
   }
 
   .btn-gradient-emerald {
-    @apply bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-xl;
+    @apply bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-xl;
   }
 
   .btn-secondary {
@@ -162,8 +160,7 @@
 
   .dark .bg-app-canvas {
     background-color: #070a11;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-    background-size: 24px 24px;
+    background-image: none;
   }
 }
 

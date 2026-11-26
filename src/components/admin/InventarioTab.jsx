@@ -389,7 +389,7 @@ export default function InventarioTab({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/70 dark:border-white/[0.06] text-xs font-mono">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-200/70 dark:border-white/[0.06] text-xs font-mono">
                         <span className="text-slate-500 dark:text-slate-400 font-sans">
                           Costo:{' '}
                           <strong className="font-mono text-slate-700 dark:text-slate-300">

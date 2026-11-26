@@ -594,8 +594,8 @@ export default function POSWorkspace({
       subtitle: 'Factura · Tasa BCV',
       icon: Smartphone,
       activeClass:
-        'bg-blue-50 dark:bg-blue-500/15 border-blue-600 text-blue-950 dark:text-blue-100 ring-2 ring-blue-500/20',
-      iconActive: 'bg-blue-600 text-white',
+        'bg-slate-100/90 dark:bg-white/[0.08] border-slate-900 dark:border-slate-200 text-slate-950 dark:text-white shadow-sm',
+      iconActive: 'bg-slate-900 dark:bg-white text-white dark:text-slate-900',
     },
     {
       id: 'EFECTIVO',
@@ -603,7 +603,7 @@ export default function POSWorkspace({
       subtitle: 'Nota · Divisa',
       icon: Banknote,
       activeClass:
-        'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-600 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/20',
+        'bg-emerald-50/70 dark:bg-emerald-500/10 border-emerald-600 text-emerald-950 dark:text-emerald-100 shadow-sm',
       iconActive: 'bg-emerald-600 text-white',
     },
     {
@@ -612,8 +612,8 @@ export default function POSWorkspace({
       subtitle: 'Factura · Cuotas',
       icon: CreditCard,
       activeClass:
-        'bg-violet-50 dark:bg-violet-500/15 border-violet-600 text-violet-950 dark:text-violet-100 ring-2 ring-violet-500/20',
-      iconActive: 'bg-violet-600 text-white',
+        'bg-slate-100/90 dark:bg-white/[0.08] border-slate-700 dark:border-slate-300 text-slate-950 dark:text-white shadow-sm',
+      iconActive: 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900',
     },
     {
       id: 'CREDITO_TIENDA',
@@ -621,7 +621,7 @@ export default function POSWorkspace({
       subtitle: 'Nota · Por cobrar',
       icon: Tag,
       activeClass:
-        'bg-amber-50 dark:bg-amber-500/15 border-amber-600 text-amber-950 dark:text-amber-100 ring-2 ring-amber-500/20',
+        'bg-amber-50/70 dark:bg-amber-500/10 border-amber-600 text-amber-950 dark:text-amber-100 shadow-sm',
       iconActive: 'bg-amber-600 text-white',
     },
   ];
@@ -1241,7 +1241,7 @@ export default function POSWorkspace({
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/70 dark:border-white/[0.06]">
+                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/70 dark:border-white/[0.06]">
                       <div className="inline-flex items-center bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/10 rounded-xl p-0.5">
                         <button
                           type="button"
@@ -1266,7 +1266,7 @@ export default function POSWorkspace({
 
                       {esManual ? (
                         <div className="flex items-center gap-2">
-                          <div className="relative w-24">
+                          <div className="relative w-20 sm:w-24">
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
                               $
                             </span>
@@ -1280,12 +1280,12 @@ export default function POSWorkspace({
                               className="input-field h-9 pl-6 pr-2 text-right font-bold tabular-nums text-xs"
                             />
                           </div>
-                          <div className="text-right font-bold tabular-nums text-xs text-slate-900 dark:text-white min-w-[68px]">
+                          <div className="text-right font-bold tabular-nums text-xs text-slate-900 dark:text-white min-w-0 sm:min-w-[68px]">
                             {formatUSD(it.subtotal_usd || 0)}
                           </div>
                         </div>
                       ) : (
-                        <div className="text-right tabular-nums min-w-[100px]">
+                        <div className="text-right tabular-nums min-w-0 sm:min-w-[100px]">
                           <div className="text-sm font-bold text-slate-900 dark:text-white">
                             {formatUSD(it.subtotal_usd || 0)}
                           </div>
@@ -1486,14 +1486,14 @@ export default function POSWorkspace({
               )}
 
               {formaPago === 'CASHEA' && (
-                <div className="flex justify-between text-violet-300 font-semibold">
+                <div className="flex justify-between text-slate-200 font-semibold">
                   <span>Recargo Cashea (12%)</span>
                   <span>+{formatUSD(totals.recargoCasheaUSD)}</span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-end justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 sm:gap-3">
               <div>
                 <span className="text-xs font-semibold text-slate-300 block">
                   {formaPago === 'PAGO_MOVIL'
@@ -1509,37 +1509,19 @@ export default function POSWorkspace({
                 </span>
               </div>
 
-              <div className="text-right tabular-nums">
+              <div className="sm:text-right tabular-nums min-w-0">
                 {formaPago === 'PAGO_MOVIL' ? (
                   <>
-                    <div className="font-heading text-2xl sm:text-3xl font-bold text-sky-400 leading-tight">
+                    <div className="font-heading text-xl sm:text-2xl font-bold text-white leading-tight break-words">
                       {formatVES(totals.totalBs)}
                     </div>
                     <div className="text-xs font-semibold text-slate-300">
                       Ref: {formatUSD(totals.totalUSD)}
                     </div>
                   </>
-                ) : formaPago === 'CASHEA' ? (
-                  <>
-                    <div className="font-heading text-2xl sm:text-3xl font-bold text-violet-400 leading-tight">
-                      {formatUSD(totals.totalUSD)}
-                    </div>
-                    <div className="text-xs font-semibold text-slate-300">
-                      {formatVES(totals.totalBs)}
-                    </div>
-                  </>
-                ) : formaPago === 'EFECTIVO' ? (
-                  <>
-                    <div className="font-heading text-2xl sm:text-3xl font-bold text-emerald-400 leading-tight">
-                      {formatUSD(totals.totalUSD)}
-                    </div>
-                    <div className="text-xs font-semibold text-slate-300">
-                      {formatVES(totals.totalBs)}
-                    </div>
-                  </>
                 ) : (
                   <>
-                    <div className="font-heading text-2xl sm:text-3xl font-bold text-amber-400 leading-tight">
+                    <div className="font-heading text-xl sm:text-2xl font-bold text-white leading-tight break-words">
                       {formatUSD(totals.totalUSD)}
                     </div>
                     <div className="text-xs font-semibold text-slate-300">
@@ -1584,10 +1566,10 @@ export default function POSWorkspace({
       </section>
 
       {items.length > 0 && (
-        <div className="lg:hidden fixed bottom-[72px] left-3 z-30">
+        <div className="lg:hidden fixed bottom-[76px] left-3 max-w-[calc(100vw-24px)] z-30">
           <a
             href="#pos-checkout"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900 dark:bg-red-600 text-white text-xs font-semibold shadow-xl border border-white/15 tabular-nums"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900 dark:bg-red-600 text-white text-xs font-semibold shadow-md border border-white/15 tabular-nums truncate max-w-full"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             <span>Cobrar ({totalItemsEnCarrito})</span>
