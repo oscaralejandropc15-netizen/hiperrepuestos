@@ -78,7 +78,7 @@ export default function RepuestoModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-[#0e1422] border-0 sm:border border-slate-200 dark:border-white/10 rounded-none sm:rounded-2xl w-full sm:w-[96vw] max-w-4xl h-[100dvh] sm:h-[92vh] max-h-full sm:max-h-[800px] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
+        className="bg-white dark:bg-[#0e1422] border-0 sm:border border-slate-200 dark:border-white/10 rounded-none sm:rounded-2xl w-full sm:w-[96vw] max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden animate-scale-in"
       >
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#090d16] shrink-0">
           <div className="flex items-center gap-3 min-w-0">

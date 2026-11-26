@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, X, ChevronDown, Check, Plus } from 'lucide-react';
 
 export const normalizarBusqueda = (str) => {
@@ -15,7 +16,8 @@ const defaultGetFilterText = (item) => (item != null ? String(item) : '');
 const defaultCreateNewLabel = (query) => `Crear "${query}"`;
 
 /**
- * Combobox buscable insensible a acentos con opción de creación rápida.
+ * Combobox buscable insensible a acentos con menú flotante via Portal
+ * (evita recortes dentro de modales con overflow-y-auto y se adapta arriba/abajo).
  */
 export default function SearchableCombobox({
   label,
@@ -28,13 +30,17 @@ export default function SearchableCombobox({
   onCreateNew,
   createNewLabel = defaultCreateNewLabel,
   required = false,
-  uppercase = false
+  uppercase = false,
 }) {
   const [abierto, setAbierto] = useState(false);
   const [filtroTexto, setFiltroTexto] = useState(() => (value ? getLabel(value) : ''));
   const [haTipeado, setHaTipeado] = useState(false);
+  const [menuPos, setMenuPos] = useState(null);
+
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
   const inputRef = useRef(null);
+  const menuRef = useRef(null);
 
   const getLabelRef = useRef(getLabel);
   getLabelRef.current = getLabel;
@@ -48,37 +54,95 @@ export default function SearchableCombobox({
     }
   }, [value, haTipeado]);
 
+  const calcularPosicionMenu = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const vw = window.innerWidth || document.documentElement.clientWidth;
+    const margin = 8;
+    const espacioAbajo = vh - rect.bottom - margin;
+    const espacioArriba = rect.top - margin;
+
+    const abrirArriba = espacioAbajo < 190 && espacioArriba > espacioAbajo;
+    const maxHeight = Math.max(
+      140,
+      Math.min(256, abrirArriba ? espacioArriba - 6 : espacioAbajo - 6)
+    );
+
+    const width = Math.min(rect.width, vw - margin * 2);
+    const left = Math.max(margin, Math.min(rect.left, vw - width - margin));
+
+    setMenuPos({
+      left,
+      width,
+      maxHeight,
+      abrirArriba,
+      top: abrirArriba ? undefined : rect.bottom + 6,
+      bottom: abrirArriba ? vh - rect.top + 6 : undefined,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!abierto) {
+      setMenuPos(null);
+      return;
+    }
+
+    calcularPosicionMenu();
+
+    const handleScroll = (e) => {
+      if (menuRef.current && (e.target === menuRef.current || menuRef.current.contains(e.target))) {
+        return;
+      }
+      calcularPosicionMenu();
+    };
+
+    const handleResize = () => calcularPosicionMenu();
+
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [abierto, calcularPosicionMenu]);
+
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setAbierto(false);
-        if (haTipeado) {
-          const textoLimpio = filtroTexto.trim();
-          if (!textoLimpio) {
-            onChange('');
-            setFiltroTexto('');
-          } else {
-            const qNorm = normalizarBusqueda(textoLimpio);
-            const match = options.find(
-              (opt) =>
-                normalizarBusqueda(opt) === qNorm ||
-                normalizarBusqueda(getLabelRef.current(opt)) === qNorm
-            );
-            if (match) {
-              onChange(match);
-              setFiltroTexto(getLabelRef.current(match));
-            } else {
-              setFiltroTexto(value ? getLabelRef.current(value) : '');
-            }
-          }
-          setHaTipeado(false);
+    function handlePointerOutside(e) {
+      const insideTrigger = containerRef.current && containerRef.current.contains(e.target);
+      const insideMenu = menuRef.current && menuRef.current.contains(e.target);
+      if (insideTrigger || insideMenu) return;
+
+      setAbierto(false);
+      if (haTipeado) {
+        const textoLimpio = filtroTexto.trim();
+        if (!textoLimpio) {
+          onChange('');
+          setFiltroTexto('');
         } else {
-          setFiltroTexto(value ? getLabelRef.current(value) : '');
+          const qNorm = normalizarBusqueda(textoLimpio);
+          const match = options.find(
+            (opt) =>
+              normalizarBusqueda(opt) === qNorm ||
+              normalizarBusqueda(getLabelRef.current(opt)) === qNorm
+          );
+          if (match) {
+            onChange(match);
+            setFiltroTexto(getLabelRef.current(match));
+          } else {
+            setFiltroTexto(value ? getLabelRef.current(value) : '');
+          }
         }
+        setHaTipeado(false);
+      } else {
+        setFiltroTexto(value ? getLabelRef.current(value) : '');
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    document.addEventListener('pointerdown', handlePointerOutside);
+    return () => document.removeEventListener('pointerdown', handlePointerOutside);
   }, [value, haTipeado, filtroTexto, options, onChange]);
 
   const opcionesFiltradas = useMemo(() => {
@@ -138,6 +202,8 @@ export default function SearchableCombobox({
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent?.stopImmediatePropagation?.();
       setAbierto(false);
       setHaTipeado(false);
       setFiltroTexto(value ? getLabelRef.current(value) : '');
@@ -163,10 +229,82 @@ export default function SearchableCombobox({
     );
   }, [filtroTexto, options]);
 
+  const dropdownPortal =
+    abierto &&
+    menuPos &&
+    typeof document !== 'undefined' &&
+    createPortal(
+      <div
+        ref={menuRef}
+        style={{
+          position: 'fixed',
+          left: `${menuPos.left}px`,
+          width: `${menuPos.width}px`,
+          maxHeight: `${menuPos.maxHeight}px`,
+          top: menuPos.top !== undefined ? `${menuPos.top}px` : undefined,
+          bottom: menuPos.bottom !== undefined ? `${menuPos.bottom}px` : undefined,
+          zIndex: 100000,
+        }}
+        className="overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-2xl p-1.5 text-xs space-y-0.5 animate-fade-in"
+      >
+        {opcionesFiltradas.length > 0 ? (
+          <>
+            {opcionesFiltradas.map((opt) => {
+              const labelOpt = getLabelRef.current(opt);
+              const estaSeleccionado =
+                value && value.trim().toLowerCase() === opt.trim().toLowerCase();
+
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => seleccionarOpcion(opt)}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-medium flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                    estaSeleccionado
+                      ? 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 font-semibold'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="truncate">{labelOpt}</span>
+                  {estaSeleccionado && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
+                </button>
+              );
+            })}
+
+            {onCreateNew && haTipeado && filtroTexto.trim() && !esCoincidenciaExacta && (
+              <button
+                type="button"
+                onClick={() => handleCrearNuevo(filtroTexto.trim())}
+                className="w-full text-left px-3 py-2 mt-1 rounded-lg border-t border-slate-100 dark:border-white/[0.06] text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{createNewLabel(filtroTexto.trim())}</span>
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="px-3 py-3 text-center text-slate-500 dark:text-slate-400 space-y-2">
+            <p className="text-xs">Sin resultados para "{filtroTexto}"</p>
+            {onCreateNew && filtroTexto.trim() && (
+              <button
+                type="button"
+                onClick={() => handleCrearNuevo(filtroTexto.trim())}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 btn-primary text-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{createNewLabel(filtroTexto.trim())}</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>,
+      document.body
+    );
+
   return (
-    <div className={`relative ${abierto ? 'z-50' : 'z-10'}`} ref={containerRef}>
+    <div className="relative" ref={containerRef}>
       {label && (
-        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between gap-2">
           <span>{label}</span>
           {value ? (
             <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -178,7 +316,7 @@ export default function SearchableCombobox({
         </label>
       )}
 
-      <div className="relative flex items-center">
+      <div ref={triggerRef} className="relative flex items-center">
         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
         <input
           ref={inputRef}
@@ -188,8 +326,9 @@ export default function SearchableCombobox({
           onFocus={() => setAbierto(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className={`input-field h-10 pl-9 pr-14 font-semibold ${abierto ? 'border-red-500 ring-2 ring-red-500/15' : ''
-            }`}
+          className={`input-field h-10 pl-9 pr-14 font-semibold ${
+            abierto ? 'border-red-500 ring-2 ring-red-500/15' : ''
+          }`}
         />
 
         <div className="absolute right-1.5 flex items-center gap-0.5">
@@ -213,66 +352,15 @@ export default function SearchableCombobox({
             className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
           >
             <ChevronDown
-              className={`w-3.5 h-3.5 transition-transform duration-150 ${abierto ? 'rotate-180 text-red-500' : ''
-                }`}
+              className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                abierto ? 'rotate-180 text-red-500' : ''
+              }`}
             />
           </button>
         </div>
       </div>
 
-      {abierto && (
-        <div className="absolute z-[70] left-0 right-0 top-full mt-1.5 max-h-56 overflow-y-auto bg-white dark:bg-[#0e1422] border border-slate-200 dark:border-white/15 rounded-xl shadow-xl py-1 text-xs divide-y divide-slate-100 dark:divide-white/[0.06] animate-fade-in">
-          {opcionesFiltradas.length > 0 ? (
-            <>
-              {opcionesFiltradas.map((opt) => {
-                const labelOpt = getLabelRef.current(opt);
-                const estaSeleccionado =
-                  value && value.trim().toLowerCase() === opt.trim().toLowerCase();
-
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => seleccionarOpcion(opt)}
-                    className={`w-full text-left px-3 py-2 font-semibold flex items-center justify-between hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer transition-colors ${estaSeleccionado
-                      ? 'text-red-600 dark:text-red-400 bg-red-50/70 dark:bg-red-500/10'
-                      : 'text-slate-800 dark:text-slate-200'
-                      }`}
-                  >
-                    <span className="truncate">{labelOpt}</span>
-                    {estaSeleccionado && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
-                  </button>
-                );
-              })}
-
-              {onCreateNew && haTipeado && filtroTexto.trim() && !esCoincidenciaExacta && (
-                <button
-                  type="button"
-                  onClick={() => handleCrearNuevo(filtroTexto.trim())}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{createNewLabel(filtroTexto.trim())}</span>
-                </button>
-              )}
-            </>
-          ) : (
-            <div className="px-3 py-3 text-center text-slate-500 dark:text-slate-400 space-y-2">
-              <p className="text-xs">Sin resultados para "{filtroTexto}"</p>
-              {onCreateNew && filtroTexto.trim() && (
-                <button
-                  type="button"
-                  onClick={() => handleCrearNuevo(filtroTexto.trim())}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 btn-primary text-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{createNewLabel(filtroTexto.trim())}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {dropdownPortal}
     </div>
   );
 }
